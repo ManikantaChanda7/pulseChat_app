@@ -1,31 +1,342 @@
-import { FormControl } from "@chakra-ui/form-control";
-import { Input } from "@chakra-ui/input";
-import { Box, Text } from "@chakra-ui/layout";
 import "./styles.css";
-import { IconButton, Spinner, useToast } from "@chakra-ui/react";
 import { getSender, getSenderFull } from "../config/ChatLogics";
-import { useEffect, useState } from "react";
-import axios from "axios";
-import { ArrowBackIcon } from "@chakra-ui/icons";
+import { useEffect, useState, useRef } from "react";
+import API from "../config/api";
 import ProfileModal from "./miscellaneous/ProfileModal";
 import ScrollableChat from "./ScrollableChat";
 import Lottie from "react-lottie";
 import animationData from "../animations/typing.json";
 
+import CryptoJS from "crypto-js";
+
 import io from "socket.io-client";
 import UpdateGroupChatModal from "./miscellaneous/UpdateGroupChatModal";
 import { ChatState } from "../Context/ChatProvider";
-const ENDPOINT = "http://localhost:5000"; // "https://talk-a-tive.herokuapp.com"; -> After deployment
+const ENDPOINT = "http://localhost:5001"; // "https://talk-a-tive.herokuapp.com"; -> After deployment
 var socket, selectedChatCompare;
+
+const CHAT_SECRET_KEY = "chat-app-secret-key";
+
+// Cloudinary Configuration
+const CLOUDINARY_CLOUD_NAME = process.env.REACT_APP_CLOUDINARY_CLOUD_NAME || "dgrpyrxrn";
+const CLOUDINARY_UPLOAD_PRESET = process.env.REACT_APP_CLOUDINARY_UPLOAD_PRESET || "chat-app";
+
+const encryptMessage = (text) => {
+  try {
+    if (!text || typeof text !== "string") {
+      return text;
+    }
+
+    return CryptoJS.AES.encrypt(text, CHAT_SECRET_KEY).toString();
+  } catch (error) {
+    console.error("Encryption failed", error);
+    return text;
+  }
+};
+
+const decryptMessage = (encryptedText) => {
+  try {
+    if (!encryptedText || typeof encryptedText !== "string") {
+      return encryptedText;
+    }
+
+    // old/plain text messages should bypass decryption
+    if (!encryptedText.startsWith("U2FsdGVkX1")) {
+      console.log("[DECRYPT CHECK]", {
+        preview: encryptedText?.slice?.(0, 30),
+        isEncrypted: encryptedText?.startsWith?.("U2FsdGVkX1"),
+      });
+      return encryptedText;
+    }
+
+    const bytes = CryptoJS.AES.decrypt(encryptedText, CHAT_SECRET_KEY);
+
+    const decrypted = bytes.toString(CryptoJS.enc.Utf8);
+
+    // fallback safely if decryption fails
+    if (!decrypted) {
+      return encryptedText;
+    }
+
+    return decrypted;
+  } catch (error) {
+    console.error("Decryption failed", error);
+    return encryptedText;
+  }
+};
+
+const decryptMessageObject = (message) => {
+  if (!message) {
+    console.log("[DECRYPT MESSAGE OBJECT]", {
+      id: message._id,
+      type: message.messageType,
+      preview: message.content?.slice?.(0, 40),
+      encrypted: message.content?.startsWith?.("U2FsdGVkX1"),
+    });
+    return message;
+  }
+
+  // do not decrypt media messages
+  if (message.messageType === "image" || message.messageType === "voice") {
+    return message;
+  }
+
+  return {
+    ...message,
+    content: decryptMessage(message.content),
+
+    replyTo: message.replyTo
+      ? {
+          ...message.replyTo,
+          content:
+            message.replyTo.messageType === "image" ||
+            message.replyTo.messageType === "voice"
+              ? message.replyTo.content
+              : decryptMessage(message.replyTo.content),
+        }
+      : null,
+  };
+};
 
 const SingleChat = ({ fetchAgain, setFetchAgain }) => {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
   const [newMessage, setNewMessage] = useState("");
+  const [imageLoading, setImageLoading] = useState(false);
   const [socketConnected, setSocketConnected] = useState(false);
   const [typing, setTyping] = useState(false);
   const [istyping, setIsTyping] = useState(false);
-  const toast = useToast();
+  const [typingTimeout, setTypingTimeout] = useState(null);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [messageSearch, setMessageSearch] = useState("");
+
+  const [replyMessage, setReplyMessage] = useState(null);
+
+  const [showSchedulePicker, setShowSchedulePicker] = useState(false);
+  const [scheduledDateTime, setScheduledDateTime] = useState("");
+  const sendScheduledMessage = async () => {
+    if (!newMessage || !scheduledDateTime) return;
+
+    try {
+      const config = {
+        headers: {
+          "Content-type": "application/json",
+          Authorization: `Bearer ${user.token}`,
+        },
+      };
+
+      const { data } = await API.post(
+        "/api/message",
+        {
+          content: encryptMessage(newMessage),
+          chatId: selectedChat._id,
+          replyTo: replyMessage?._id || null,
+          isScheduled: true,
+          scheduledFor: scheduledDateTime,
+        },
+        config,
+      );
+
+      const decryptedScheduledMessage = decryptMessageObject(data);
+
+      setMessages((prev) => [...prev, decryptedScheduledMessage]);
+
+      setNewMessage("");
+      setReplyMessage(null);
+      setScheduledDateTime("");
+      setShowSchedulePicker(false);
+
+      console.log("[SCHEDULED MESSAGE CREATED]", data._id);
+    } catch (error) {
+      console.error("Scheduled message failed", error);
+    }
+  };
+
+  const [isRecording, setIsRecording] = useState(false);
+  const [mediaRecorder, setMediaRecorder] = useState(null);
+  const [audioChunks, setAudioChunks] = useState([]);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [recordingStream, setRecordingStream] = useState(null);
+  const recordingIntervalRef = useRef(null);
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+      });
+
+      const recorder = new MediaRecorder(stream);
+      setRecordingStream(stream);
+
+      setAudioChunks([]);
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          setAudioChunks((prev) => [...prev, event.data]);
+        }
+      };
+
+      recorder.start();
+
+      setRecordingTime(0);
+
+      recordingIntervalRef.current = setInterval(() => {
+        setRecordingTime((prev) => prev + 1);
+      }, 1000);
+
+      setMediaRecorder(recorder);
+      setIsRecording(true);
+    } catch (error) {
+      console.error("Microphone access denied", error);
+    }
+  };
+
+  const cancelRecording = () => {
+    if (!mediaRecorder) return;
+
+    mediaRecorder.stop();
+
+    clearInterval(recordingIntervalRef.current);
+
+    if (recordingStream) {
+      recordingStream.getTracks().forEach((track) => track.stop());
+    }
+
+    setRecordingStream(null);
+    setMediaRecorder(null);
+    setAudioChunks([]);
+    setRecordingTime(0);
+    setIsRecording(false);
+  };
+
+  const stopRecording = async () => {
+    if (!mediaRecorder) return;
+
+    clearInterval(recordingIntervalRef.current);
+
+    const chunks = [];
+
+    mediaRecorder.ondataavailable = (event) => {
+      if (event.data.size > 0) {
+        chunks.push(event.data);
+      }
+    };
+
+    mediaRecorder.onstop = async () => {
+      try {
+        console.log("[VOICE] recorder stopped");
+
+        const audioBlob = new Blob(chunks, {
+          type: "audio/webm",
+        });
+
+        console.log("[VOICE] blob created", audioBlob);
+
+        if (audioBlob.size === 0) {
+          console.error("[VOICE] empty audio blob");
+          return;
+        }
+
+        const formData = new FormData();
+        formData.append("file", audioBlob, "voice-message.webm");
+        formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+        formData.append("cloud_name", CLOUDINARY_CLOUD_NAME);
+        formData.append("resource_type", "video");
+
+        console.log("[VOICE] uploading to cloudinary");
+
+        const uploadRes = await fetch(
+          `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/video/upload`,
+          {
+            method: "POST",
+            body: formData,
+          },
+        );
+
+        const uploadData = await uploadRes.json();
+
+        console.log("[VOICE] uploaded", uploadData.secure_url);
+
+        const config = {
+          headers: {
+            "Content-type": "application/json",
+            Authorization: `Bearer ${user.token}`,
+          },
+        };
+
+        const { data: messageData } = await API.post(
+          "/api/message",
+          {
+            content: uploadData.secure_url,
+            chatId: selectedChat._id,
+            messageType: "voice",
+          },
+          config,
+        );
+
+        console.log("[VOICE] message created", messageData);
+
+        socket.emit("new message", messageData);
+
+        setMessages((prev) => [...prev, messageData]);
+
+        setChats((prevChats) => {
+          const updatedChats = prevChats.map((chat) => {
+            if (chat._id !== messageData.chat._id) {
+              return chat;
+            }
+
+            return {
+              ...chat,
+              latestMessage: messageData,
+            };
+          });
+
+          const movedChat = updatedChats.find(
+            (c) => c._id === messageData.chat._id,
+          );
+
+          const remainingChats = updatedChats.filter(
+            (c) => c._id !== messageData.chat._id,
+          );
+
+          return movedChat ? [movedChat, ...remainingChats] : prevChats;
+        });
+
+        setAudioChunks([]);
+      } catch (error) {
+        console.error("Voice upload failed", error);
+      }
+    };
+
+    mediaRecorder.stop();
+
+    // stop browser microphone usage
+    if (recordingStream) {
+      recordingStream.getTracks().forEach((track) => track.stop());
+    }
+
+    setRecordingStream(null);
+    setMediaRecorder(null);
+    setIsRecording(false);
+    setRecordingTime(0);
+  };
+
+  const messagesEndRef = useRef(null);
+  const scrollContainerRef = useRef(null);
+  const isNearBottomRef = useRef(false);
+  const isLoadingOlderRef = useRef(false);
+
+  useEffect(() => {
+    if (
+      messagesEndRef.current &&
+      isNearBottomRef.current &&
+      !isLoadingOlderRef.current
+    ) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages]);
 
   const defaultOptions = {
     loop: true,
@@ -35,8 +346,19 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
       preserveAspectRatio: "xMidYMid slice",
     },
   };
-  const { selectedChat, setSelectedChat, user, notification, setNotification } =
-    ChatState();
+  const {
+    selectedChat,
+    setSelectedChat,
+    user,
+    notification,
+    setNotification,
+    onlineUsers,
+    lastSeenMap,
+    chats,
+    setChats,
+    addNotification,
+    socket, // Get socket from ChatState instead of creating a new one
+  } = ChatState();
 
   const fetchMessages = async () => {
     if (!selectedChat) return;
@@ -50,23 +372,65 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
 
       setLoading(true);
 
-      const { data } = await axios.get(
-        `/api/message/${selectedChat._id}`,
-        config
+      console.log("[FETCH MESSAGES] Calling API for chat:", selectedChat._id);
+
+      const { data } = await API.get(
+        `/api/message/${selectedChat._id}?page=1&limit=20`,
+        config,
       );
-      setMessages(data);
+      console.log("[FETCH MESSAGES] ✓ API Response:", {
+        messageCount: data.messages.length,
+        seenStatus: data.messages.map((m) => ({
+          id: m._id.slice(-6),
+          seen: m.seen,
+          sender: m.sender._id === user._id ? "me" : "other",
+        })),
+      });
+      console.log(
+        "[FETCH RAW MESSAGES]",
+        data.messages.map((m) => ({
+          id: m._id,
+          encrypted: m.content?.startsWith?.("U2FsdGVkX1"),
+          preview: m.content?.slice?.(0, 25),
+        })),
+      );
+      const decryptedMessages = data.messages.map((msg) =>
+        decryptMessageObject(msg),
+      );
+
+      setMessages(decryptedMessages);
+      setTimeout(() => {
+        if (messagesEndRef.current) {
+          messagesEndRef.current.scrollIntoView({ behavior: "auto" });
+        }
+      }, 0);
+      setPage(1);
+      setHasMore(data.hasMore);
+
+      // Mark all unseen messages as seen on open
+      data.messages.forEach((msg) => {
+        if (msg.sender._id !== user._id && !msg.seen) {
+          console.log("[FETCH OPEN CHAT -> EMIT MESSAGE SEEN]", {
+            messageId: msg._id,
+            chatId: selectedChat._id,
+            sender: msg.sender._id,
+            currentUser: user._id,
+            alreadySeen: msg.seen,
+          });
+          socket.emit("message seen", {
+            messageId: msg._id,
+            chatId: selectedChat._id,
+            userId: user._id,
+          });
+        }
+      });
+
       setLoading(false);
 
       socket.emit("join chat", selectedChat._id);
+      console.log("[JOIN CHAT]", selectedChat._id);
     } catch (error) {
-      toast({
-        title: "Error Occured!",
-        description: "Failed to Load the Messages",
-        status: "error",
-        duration: 5000,
-        isClosable: true,
-        position: "bottom",
-      });
+      console.error("Error Occurred");
     }
   };
 
@@ -81,61 +445,203 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
           },
         };
         setNewMessage("");
-        const { data } = await axios.post(
+        const { data } = await API.post(
           "/api/message",
           {
-            content: newMessage,
-            chatId: selectedChat,
+            content: encryptMessage(newMessage),
+            chatId: selectedChat._id,
+            replyTo: replyMessage?._id || null,
           },
-          config
+          config,
         );
-        socket.emit("new message", data);
-        setMessages([...messages, data]);
-      } catch (error) {
-        toast({
-          title: "Error Occured!",
-          description: "Failed to send the Message",
-          status: "error",
-          duration: 5000,
-          isClosable: true,
-          position: "bottom",
+        console.log("[SEND API RESPONSE RAW]", {
+          id: data._id,
+          preview: data.content?.slice?.(0, 40),
+          encrypted: data.content?.startsWith?.("U2FsdGVkX1"),
         });
+        const decryptedMessage = decryptMessageObject(data);
+
+        socket.emit("new message", decryptedMessage);
+        console.log("[SEND MESSAGE]", decryptedMessage._id);
+        setMessages((prev) => [...prev, decryptedMessage]);
+
+        setChats((prevChats) => {
+          const updatedChats = prevChats.map((chat) => {
+            if (chat._id !== decryptedMessage.chat._id) {
+              return chat;
+            }
+
+            return {
+              ...chat,
+              latestMessage: decryptedMessage,
+            };
+          });
+
+          const movedChat = updatedChats.find(
+            (c) => c._id === decryptedMessage.chat._id,
+          );
+
+          const remainingChats = updatedChats.filter(
+            (c) => c._id !== decryptedMessage.chat._id,
+          );
+
+          return movedChat ? [movedChat, ...remainingChats] : prevChats;
+        });
+
+        setReplyMessage(null);
+      } catch (error) {
+        console.error("Error Occurred");
       }
     }
   };
 
-  useEffect(() => {
-    socket = io(ENDPOINT);
-    socket.emit("setup", user);
-    socket.on("connected", () => setSocketConnected(true));
-    socket.on("typing", () => setIsTyping(true));
-    socket.on("stop typing", () => setIsTyping(false));
+  const uploadImage = async (file) => {
+    if (!file) return;
 
-    // eslint-disable-next-line
-  }, []);
+    try {
+      setImageLoading(true);
 
-  useEffect(() => {
-    fetchMessages();
+      const data = new FormData();
+      data.append("file", file);
+      data.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+      data.append("cloud_name", CLOUDINARY_CLOUD_NAME);
 
-    selectedChatCompare = selectedChat;
-    // eslint-disable-next-line
-  }, [selectedChat]);
+      const res = await fetch(
+        `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+        {
+          method: "POST",
+          body: data,
+        },
+      );
 
-  useEffect(() => {
-    socket.on("message recieved", (newMessageRecieved) => {
-      if (
-        !selectedChatCompare || // if chat is not selected or doesn't match current chat
-        selectedChatCompare._id !== newMessageRecieved.chat._id
-      ) {
-          // if (!notification.includes(newMessageRecieved)) {
-          //   setNotification([newMessageRecieved, ...notification]);
-          //   setFetchAgain(!fetchAgain);
-          // }
-      } else {
-        setMessages([...messages, newMessageRecieved]);
-      }
-    });
-  });
+      const result = await res.json();
+
+      const config = {
+        headers: {
+          "Content-type": "application/json",
+          Authorization: `Bearer ${user.token}`,
+        },
+      };
+
+      const { data: messageData } = await API.post(
+        "/api/message",
+        {
+          content: result.secure_url,
+          chatId: selectedChat._id,
+          messageType: "image",
+        },
+        config,
+      );
+
+      socket.emit("new message", messageData);
+      setMessages((prev) => [...prev, messageData]);
+
+      setChats((prevChats) => {
+        const updatedChats = prevChats.map((chat) => {
+          if (chat._id !== messageData.chat._id) {
+            return chat;
+          }
+
+          return {
+            ...chat,
+            latestMessage: messageData,
+          };
+        });
+
+        const movedChat = updatedChats.find(
+          (c) => c._id === messageData.chat._id,
+        );
+
+        const remainingChats = updatedChats.filter(
+          (c) => c._id !== messageData.chat._id,
+        );
+
+        return movedChat ? [movedChat, ...remainingChats] : prevChats;
+      });
+
+      // keep images unencrypted intentionally
+
+      setImageLoading(false);
+    } catch (err) {
+      console.error("Image upload failed");
+      setImageLoading(false);
+    }
+  };
+
+  const uploadFile = async (file) => {
+    if (!file) return;
+
+    try {
+      setImageLoading(true);
+
+      const data = new FormData();
+      data.append("file", file);
+      data.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+      data.append("cloud_name", CLOUDINARY_CLOUD_NAME);
+
+      const res = await fetch(
+        `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/auto/upload`,
+        {
+          method: "POST",
+          body: data,
+        },
+      );
+
+      const result = await res.json();
+
+      const config = {
+        headers: {
+          "Content-type": "application/json",
+          Authorization: `Bearer ${user.token}`,
+        },
+      };
+
+      const { data: messageData } = await API.post(
+        "/api/message",
+        {
+          content: result.secure_url,
+          chatId: selectedChat._id,
+          messageType: "file",
+          fileName: file.name,
+          fileSize: file.size,
+          fileMimeType: file.type,
+        },
+        config,
+      );
+
+      socket.emit("new message", messageData);
+
+      setMessages((prev) => [...prev, messageData]);
+
+      setChats((prevChats) => {
+        const updatedChats = prevChats.map((chat) => {
+          if (chat._id !== messageData.chat._id) {
+            return chat;
+          }
+
+          return {
+            ...chat,
+            latestMessage: messageData,
+          };
+        });
+
+        const movedChat = updatedChats.find(
+          (c) => c._id === messageData.chat._id,
+        );
+
+        const remainingChats = updatedChats.filter(
+          (c) => c._id !== messageData.chat._id,
+        );
+
+        return movedChat ? [movedChat, ...remainingChats] : prevChats;
+      });
+
+      setImageLoading(false);
+    } catch (err) {
+      console.error("File upload failed", err);
+      setImageLoading(false);
+    }
+  };
 
   const typingHandler = (e) => {
     setNewMessage(e.target.value);
@@ -146,45 +652,476 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
       setTyping(true);
       socket.emit("typing", selectedChat._id);
     }
-    let lastTypingTime = new Date().getTime();
-    var timerLength = 3000;
+
+    if (typingTimeout) clearTimeout(typingTimeout);
+
+    const timeout = setTimeout(() => {
+      socket.emit("stop typing", selectedChat._id);
+      setTyping(false);
+    }, 2000);
+
+    setTypingTimeout(timeout);
+  };
+
+  useEffect(() => {
+    if (!socket) {
+      console.log("[SOCKET NOT READY] Waiting for socket from ChatProvider...");
+      return;
+    }
+
+    console.log("[SOCKET READY] Using socket from ChatProvider:", socket.id);
+
+    socket.on("typing", () => setIsTyping(true));
+    socket.on("stop typing", () => setIsTyping(false));
+
+    // ====== MESSAGES SEEN LISTENER ======
+    const messageSeenHandler = ({ messageIds, message }) => {
+      console.log("[✓✓✓ MESSAGES SEEN EVENT FIRED]", {
+        messageIds,
+        count: messageIds?.length,
+      });
+      console.log("[GROUP READ RECEIPT UPDATE]", {
+        allSeen: message?.allSeen,
+        seenByCount: message?.seenBy?.length,
+      });
+
+      const decryptedSeenMessage = message
+        ? decryptMessageObject(message)
+        : null;
+
+      setMessages((prev) => {
+        const updatedMessages = prev.map((msg) => {
+          const updatedMessage = messageIds.includes(msg._id.toString());
+
+          if (!updatedMessage) {
+            return msg;
+          }
+
+          console.log("[✓✓✓ FORCING MESSAGE TO SEEN]", msg._id.slice(-6));
+
+          return {
+            ...msg,
+            ...(decryptedSeenMessage || {}),
+
+            // direct chat support
+            seen: true,
+
+            // group chat realtime read receipts
+            allSeen: Boolean(decryptedSeenMessage?.allSeen),
+            seenBy: Array.isArray(decryptedSeenMessage?.seenBy)
+              ? [...decryptedSeenMessage.seenBy]
+              : Array.isArray(msg.seenBy)
+                ? [...msg.seenBy]
+                : [],
+
+            seenAt:
+              decryptedSeenMessage?.seenAt ||
+              msg?.seenAt ||
+              new Date().toISOString(),
+          };
+        });
+
+        // force completely new array reference
+        return [...updatedMessages];
+      });
+
+      // sync left sidebar latest message instantly too
+      setChats((prevChats) =>
+        prevChats.map((chat) => {
+          if (chat._id !== selectedChatCompare?._id) {
+            return chat;
+          }
+
+          if (
+            chat.latestMessage &&
+            messageIds.includes(chat.latestMessage._id?.toString())
+          ) {
+            return {
+              ...chat,
+              latestMessage: {
+                ...chat.latestMessage,
+                seen: true,
+              },
+            };
+          }
+
+          return chat;
+        }),
+      );
+    };
+
+    socket.on("messages seen", messageSeenHandler);
+    console.log("[✓✓ LISTENER REGISTERED] 'messages seen' listener ready");
+    socket.on("message seen updated", (updatedMessage) => {
+      console.log("[MESSAGE SEEN UPDATED EVENT RECEIVED]", {
+        id: updatedMessage._id,
+        seen: updatedMessage.seen,
+        seenAt: updatedMessage.seenAt,
+      });
+
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg._id === updatedMessage._id
+            ? {
+                ...msg,
+                seen: true,
+                seenAt: updatedMessage.seenAt || new Date().toISOString(),
+              }
+            : msg,
+        ),
+      );
+    });
+    socket.on("message reaction updated", (updatedMessage) => {
+      updatedMessage = decryptMessageObject(updatedMessage);
+      console.log(
+        "[REACTION SOCKET RECEIVED]",
+        updatedMessage._id,
+        updatedMessage.reactions,
+      );
+
+      setMessages((prev) => {
+        console.log("[REACTION STATE UPDATE]", updatedMessage._id);
+
+        return prev.map((msg) => {
+          if (msg._id !== updatedMessage._id) {
+            return msg;
+          }
+
+          return {
+            ...updatedMessage,
+
+            // preserve frontend state
+            isScheduled: msg.isScheduled,
+            scheduledSent: msg.scheduledSent,
+          };
+        });
+      });
+    });
+
+    socket.on("message edited update", (updatedMessage) => {
+      updatedMessage = decryptMessageObject(updatedMessage);
+      console.log("[MESSAGE EDIT SOCKET]", updatedMessage);
+
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg._id === updatedMessage._id ? updatedMessage : msg,
+        ),
+      );
+    });
+
+    socket.on("message deleted update", (updatedMessage) => {
+      console.log("[MESSAGE DELETE SOCKET]", updatedMessage);
+
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg._id === updatedMessage._id ? updatedMessage : msg,
+        ),
+      );
+    });
+
+    socket.on("scheduled message sent", (scheduledMessage) => {
+      scheduledMessage = decryptMessageObject(scheduledMessage);
+      console.log("[SCHEDULED MESSAGE RECEIVED]", scheduledMessage._id);
+
+      setMessages((prev) => {
+        const existingIndex = prev.findIndex(
+          (msg) => msg._id === scheduledMessage._id,
+        );
+
+        // replace sender placeholder / existing message
+        if (existingIndex !== -1) {
+          return prev.map((msg) =>
+            msg._id === scheduledMessage._id
+              ? {
+                  ...msg,
+                  ...scheduledMessage,
+                  scheduledSent: true,
+                  seen: scheduledMessage.seen || false,
+                  isScheduled: false,
+                }
+              : msg,
+          );
+        }
+
+        // prevent duplicates if already received through message recieved
+        const alreadyExists = prev.some(
+          (msg) =>
+            msg._id === scheduledMessage._id ||
+            (msg.content === scheduledMessage.content &&
+              msg.sender?._id === scheduledMessage.sender?._id &&
+              msg.createdAt === scheduledMessage.createdAt),
+        );
+
+        if (alreadyExists) {
+          return prev;
+        }
+
+        return [...prev, scheduledMessage];
+      });
+    });
+
+    return () => {
+      if (typingTimeout) clearTimeout(typingTimeout);
+      socket.off("typing");
+      socket.off("stop typing");
+      socket.off("messages seen");
+      socket.off("message seen updated");
+      socket.off("message reaction updated");
+      socket.off("message edited update");
+      socket.off("message deleted update");
+      socket.off("scheduled message sent");
+    };
+
+    // Re-register listeners when socket changes
+  }, [socket, user, setChats]);
+
+  useEffect(() => {
+    // Join chat room FIRST before fetching messages
+    if (socket && selectedChat?._id) {
+      console.log("[JOIN CHAT FIRST]", selectedChat._id);
+      socket.emit("join chat", selectedChat._id);
+    }
+
+    selectedChatCompare = selectedChat;
+
+    // Small delay to ensure join is processed on server before API call
     setTimeout(() => {
-      var timeNow = new Date().getTime();
-      var timeDiff = timeNow - lastTypingTime;
-      if (timeDiff >= timerLength && typing) {
-        socket.emit("stop typing", selectedChat._id);
-        setTyping(false);
+      fetchMessages();
+    }, 100);
+    // eslint-disable-next-line
+  }, [selectedChat]);
+
+  useEffect(() => {
+    if (!socket) return;
+    socket.on("message recieved", (newMessageRecieved) => {
+      console.log("[RAW SOCKET MESSAGE]", {
+        id: newMessageRecieved._id,
+        preview: newMessageRecieved.content?.slice?.(0, 40),
+        encrypted: newMessageRecieved.content?.startsWith?.("U2FsdGVkX1"),
+      });
+      newMessageRecieved = decryptMessageObject(newMessageRecieved);
+      console.log("[MESSAGE RECIEVED SOCKET]", {
+        id: newMessageRecieved._id,
+        chatId: newMessageRecieved.chat._id,
+        sender: newMessageRecieved.sender._id,
+        seen: newMessageRecieved.seen,
+      });
+      if (
+        !selectedChatCompare ||
+        selectedChatCompare._id !== newMessageRecieved.chat._id
+      ) {
+        // Add to notifications
+        addNotification(newMessageRecieved);
+
+        // Update chat list (left panel)
+        setChats((prevChats) => {
+          const updatedChats = prevChats.map((chat) => {
+            if (chat._id === newMessageRecieved.chat._id) {
+              return {
+                ...chat,
+                latestMessage:
+                  newMessageRecieved.isScheduled &&
+                  !newMessageRecieved.scheduledSent
+                    ? chat.latestMessage
+                    : newMessageRecieved,
+              };
+            }
+            return chat;
+          });
+
+          const movedChat = updatedChats.find(
+            (c) => c._id === newMessageRecieved.chat._id,
+          );
+
+          const remainingChats = updatedChats.filter(
+            (c) => c._id !== newMessageRecieved.chat._id,
+          );
+
+          return movedChat ? [movedChat, ...remainingChats] : prevChats;
+        });
+      } else {
+        setMessages((prev) => {
+          const exists = prev.some((msg) => msg._id === newMessageRecieved._id);
+
+          if (exists) {
+            return prev.map((msg) => {
+              if (msg._id !== newMessageRecieved._id) {
+                return msg;
+              }
+
+              // preserve already-updated seen state from realtime events
+              const preservedSeen =
+                msg.seen === true ? true : newMessageRecieved.seen;
+
+              return {
+                ...msg,
+                ...newMessageRecieved,
+                seen: preservedSeen,
+                isScheduled: false,
+                scheduledSent: true,
+              };
+            });
+          }
+
+          console.log("[ADDING NEW MESSAGE TO STATE]", {
+            id: newMessageRecieved._id,
+            seen: newMessageRecieved.seen,
+          });
+
+          // Only mark as seen if user is actually viewing the chat
+          // AND window/tab is currently active
+          if (
+            selectedChatCompare &&
+            selectedChatCompare._id === newMessageRecieved.chat._id &&
+            document.visibilityState === "visible"
+          ) {
+            console.log("[EMIT MESSAGE SEEN IMMEDIATELY]", {
+              messageId: newMessageRecieved._id,
+            });
+
+            socket.emit("message seen", {
+              messageId: newMessageRecieved._id,
+              chatId: newMessageRecieved.chat._id,
+              userId: user._id,
+            });
+          }
+
+          return [...prev, newMessageRecieved];
+        });
+        setChats((prevChats) => {
+          const updatedChats = prevChats.map((chat) => {
+            if (chat._id !== newMessageRecieved.chat._id) {
+              return chat;
+            }
+
+            return {
+              ...chat,
+              latestMessage: newMessageRecieved,
+            };
+          });
+
+          const movedChat = updatedChats.find(
+            (c) => c._id === newMessageRecieved.chat._id,
+          );
+
+          const remainingChats = updatedChats.filter(
+            (c) => c._id !== newMessageRecieved.chat._id,
+          );
+
+          return movedChat ? [movedChat, ...remainingChats] : prevChats;
+        });
+        // (message seen emission removed)
       }
-    }, timerLength);
+    });
+
+    return () => {
+      socket.off("message recieved");
+    };
+  }, []);
+
+  const filteredMessages = messageSearch
+    ? messages.filter((m) =>
+        m.content.toLowerCase().includes(messageSearch.toLowerCase()),
+      )
+    : messages;
+
+  const loadMoreMessages = async () => {
+    if (!hasMore || loadingMore) return;
+
+    try {
+      setLoadingMore(true);
+      isLoadingOlderRef.current = true;
+
+      const container = scrollContainerRef.current;
+      const prevScrollHeight = container?.scrollHeight || 0;
+
+      const config = {
+        headers: {
+          Authorization: `Bearer ${user.token}`,
+        },
+      };
+
+      const nextPage = page + 1;
+
+      const { data } = await API.get(
+        `/api/message/${selectedChat._id}?page=${nextPage}&limit=20`,
+        config,
+      );
+
+      const decryptedOlderMessages = data.messages.map((msg) =>
+        decryptMessageObject(msg),
+      );
+
+      setMessages((prev) => [...decryptedOlderMessages, ...prev]);
+      setPage(nextPage);
+      setHasMore(data.hasMore);
+
+      setLoadingMore(false);
+
+      // maintain scroll position
+      setTimeout(() => {
+        if (container) {
+          const newScrollHeight = container.scrollHeight;
+          container.scrollTop = newScrollHeight - prevScrollHeight;
+          isLoadingOlderRef.current = false;
+        }
+      }, 0);
+    } catch (error) {
+      console.error("Error loading more messages");
+      setLoadingMore(false);
+    }
   };
 
   return (
     <>
       {selectedChat ? (
         <>
-          <Text
-            fontSize={{ base: "28px", md: "30px" }}
-            pb={3}
-            px={2}
-            w="100%"
-            fontFamily="Work sans"
-            display="flex"
-            justifyContent={{ base: "space-between" }}
-            alignItems="center"
-          >
-            <IconButton
-              display={{ base: "flex", md: "none" }}
-              icon={<ArrowBackIcon />}
+          <div className="text-[28px] md:text-[30px] pb-3 px-2 w-full flex justify-between items-center font-semibold">
+            <button
+              className="md:hidden px-2 py-1 bg-gray-200 rounded"
               onClick={() => setSelectedChat("")}
-            />
+            >
+              ←
+            </button>
             {messages &&
               (!selectedChat.isGroupChat ? (
-                <>
-                  {getSender(user, selectedChat.users)}
-                  <ProfileModal
-                    user={getSenderFull(user, selectedChat.users)}
-                  />
-                </>
+                (() => {
+                  const otherUser = selectedChat.users.find(
+                    (u) => u._id !== user._id,
+                  );
+                  const isOnline = onlineUsers?.includes(otherUser?._id);
+
+                  const lastSeen = lastSeenMap?.[otherUser?._id];
+
+                  const formatLastSeen = (timestamp) => {
+                    if (!timestamp) return "Offline";
+
+                    return `Last seen ${new Date(timestamp).toLocaleString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      day: "numeric",
+                      month: "short",
+                    })}`;
+                  };
+
+                  return (
+                    <>
+                      <div className="flex flex-col">
+                        <span>{getSender(user, selectedChat.users)}</span>
+                        <span
+                          className={`text-xs ${isOnline ? "text-green-500" : "text-gray-500"}`}
+                        >
+                          {isOnline
+                            ? "Online"
+                            : formatLastSeen(lastSeen)}
+                        </span>
+                      </div>
+                      <ProfileModal
+                        user={getSenderFull(user, selectedChat.users)}
+                      />
+                    </>
+                  );
+                })()
               ) : (
                 <>
                   {selectedChat.chatName.toUpperCase()}
@@ -195,37 +1132,59 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
                   />
                 </>
               ))}
-          </Text>
-          <Box
-            display="flex"
-            flexDir="column"
-            justifyContent="flex-end"
-            p={3}
-            bg="#E8E8E8"
-            w="100%"
-            h="100%"
-            borderRadius="lg"
-            overflowY="hidden"
-          >
+          </div>
+          <div className="flex flex-col w-full h-full rounded-lg overflow-hidden bg-gradient-to-b from-gray-100 to-gray-200">
+            <input
+              type="text"
+              placeholder="Search messages..."
+              value={messageSearch}
+              onChange={(e) => setMessageSearch(e.target.value)}
+              className="m-2 p-2 rounded-md border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
             {loading ? (
-              <Spinner
-                size="xl"
-                w={20}
-                h={20}
-                alignSelf="center"
-                margin="auto"
-              />
+              <div className="text-center text-gray-500">Loading...</div>
             ) : (
-              <div className="messages">
-                <ScrollableChat messages={messages} />
+              <div
+                ref={scrollContainerRef}
+                className="flex-1 overflow-y-auto px-3 py-2 flex flex-col"
+                onScroll={(e) => {
+                  const { scrollTop, scrollHeight, clientHeight } = e.target;
+
+                  // detect if user is near bottom
+                  isNearBottomRef.current =
+                    scrollHeight - scrollTop - clientHeight < 100;
+
+                  if (scrollTop === 0 && hasMore && !loadingMore) {
+                    loadMoreMessages();
+                  }
+                }}
+              >
+                {loadingMore && (
+                  <div className="text-center text-gray-500 text-xs mb-2">
+                    Loading more...
+                  </div>
+                )}
+                <>
+                  <ScrollableChat
+                    messages={filteredMessages}
+                    messageSearch={messageSearch}
+                    setMessages={setMessages}
+                    socket={socket}
+                    setReplyMessage={setReplyMessage}
+                  />
+                  <div ref={messagesEndRef} />
+                </>
               </div>
             )}
 
-            <FormControl
+            {imageLoading && (
+              <div className="text-xs text-gray-500 mb-1">
+                Uploading image...
+              </div>
+            )}
+            <div
               onKeyDown={sendMessage}
-              id="first-name"
-              isRequired
-              mt={3}
+              className="mt-2 px-3 py-2 bg-white/80 backdrop-blur border-t"
             >
               {istyping ? (
                 <div>
@@ -239,23 +1198,147 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
               ) : (
                 <></>
               )}
-              <Input
-                variant="filled"
-                bg="#E0E0E0"
-                placeholder="Enter a message.."
-                value={newMessage}
-                onChange={typingHandler}
-              />
-            </FormControl>
-          </Box>
+              {replyMessage && (
+                <div className="mb-2 flex items-start justify-between gap-3 bg-blue-50 border-l-4 border-blue-500 rounded-lg px-3 py-2">
+                  <div className="flex flex-col overflow-hidden">
+                    <span className="text-xs font-semibold text-blue-700 mb-1">
+                      Replying to{" "}
+                      {replyMessage.sender._id === user._id
+                        ? "Yourself"
+                        : replyMessage.sender.name}
+                    </span>
+
+                    <span className="text-sm text-gray-700 truncate max-w-[300px]">
+                      {replyMessage.messageType === "voice" ||
+                      replyMessage.content?.includes("/video/upload/")
+                        ? "🎙️ Voice Message"
+                        : replyMessage.messageType === "image" ||
+                            replyMessage.content?.includes("/image/upload/")
+                          ? "📷 Image"
+                          : replyMessage.content}
+                    </span>
+                  </div>
+
+                  <button
+                    onClick={() => setReplyMessage(null)}
+                    className="text-gray-500 hover:text-black text-sm"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+              {showSchedulePicker && (
+                <div className="mb-2 flex items-center gap-2 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2">
+                  <input
+                    type="datetime-local"
+                    value={scheduledDateTime}
+                    onChange={(e) => setScheduledDateTime(e.target.value)}
+                    className="border rounded px-2 py-1 text-sm"
+                  />
+
+                  <button
+                    onClick={sendScheduledMessage}
+                    className="px-3 py-1 rounded bg-yellow-500 hover:bg-yellow-600 text-white text-sm"
+                  >
+                    Schedule
+                  </button>
+                </div>
+              )}
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => uploadImage(e.target.files[0])}
+                  className="hidden"
+                  id="imageUpload"
+                />
+
+                <input
+                  type="file"
+                  accept=".pdf,.doc,.docx,.zip,.rar,.txt"
+                  onChange={(e) => uploadFile(e.target.files[0])}
+                  className="hidden"
+                  id="fileUpload"
+                />
+
+                <div className="flex items-center gap-2">
+                  <label
+                    htmlFor="imageUpload"
+                    className="cursor-pointer px-2 py-1 bg-gray-200 rounded"
+                  >
+                    🖼️
+                  </label>
+
+                  <label
+                    htmlFor="fileUpload"
+                    className="cursor-pointer px-2 py-1 bg-gray-200 rounded"
+                  >
+                    📎
+                  </label>
+                </div>
+
+                {isRecording ? (
+                  <div className="flex items-center gap-2 bg-red-50 border border-red-200 px-3 py-2 rounded-lg flex-1">
+                    <div className="flex items-center gap-2 text-red-500 font-medium text-sm">
+                      <span className="animate-pulse text-lg">🔴</span>
+                      <span>Recording...</span>
+                    </div>
+
+                    <span className="text-sm font-semibold text-gray-700 min-w-[40px]">
+                      {Math.floor(recordingTime / 60)
+                        .toString()
+                        .padStart(2, "0")}
+                      :{(recordingTime % 60).toString().padStart(2, "0")}
+                    </span>
+
+                    <div className="flex items-center gap-2 ml-auto">
+                      <button
+                        onClick={cancelRecording}
+                        className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 text-sm"
+                      >
+                        ✕
+                      </button>
+
+                      <button
+                        onClick={stopRecording}
+                        className="px-3 py-1 rounded bg-green-500 hover:bg-green-600 text-white text-sm"
+                      >
+                        Send
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={startRecording}
+                    className="px-3 py-1 rounded text-white bg-blue-500 hover:bg-blue-600"
+                  >
+                    🎙️
+                  </button>
+                )}
+
+                <button
+                  onClick={() => setShowSchedulePicker((prev) => !prev)}
+                  className="px-3 py-1 rounded bg-yellow-400 hover:bg-yellow-500 text-black"
+                >
+                  ⏰
+                </button>
+
+                <input
+                  className="flex-1 p-2 rounded-lg bg-gray-100 border focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  placeholder="Enter a message.."
+                  value={newMessage}
+                  onChange={typingHandler}
+                />
+              </div>
+            </div>
+          </div>
         </>
       ) : (
         // to get socket.io on same page
-        <Box display="flex" alignItems="center" justifyContent="center" h="100%">
-          <Text fontSize="3xl" pb={3} fontFamily="Work sans">
-            Click on a user to start chatting
-          </Text>
-        </Box>
+        <div className="flex items-center justify-center h-full">
+          <p className="text-2xl pb-3">Click on a user to start chatting</p>
+        </div>
       )}
     </>
   );

@@ -1,74 +1,3 @@
-// const express = require("express");
-// const dotenv = require("dotenv");
-// const { chats } = require("./data/data");
-// const connectDB = require("./config/db");
-// const colors=require("colors");
-// const userRoutes=require("./routes/userRoutes");
-// const chatRoutes=require("./routes/chatRoutes");
-// const messageRoutes=require("./routes/messageRoutes");
-// const { notFound, errorHandler } = require("./middleware/errorMiddleware");
-// // const path = require("path");
-
-
-// const app = express();
-// app.use(express.json());
-// dotenv.config();
-// connectDB();
-
-// app.get("/",(req,res)=>{
-//     res.send("API is running");
-// });
-
-// app.use('/api/user',userRoutes);
-// app.use('/api/chat',chatRoutes);
-// app.use('/api/message',messageRoutes);
-
-// app.use(notFound);
-// app.use(errorHandler);
-
-
-
-// const PORT = process.env.PORT || 5000
-// const server = app.listen(5000, console.log(`Server started on PORT ${PORT}`));
-
-// const io = require("socket.io")(server, {
-//   pingTimeout: 60000,
-//   cors: {
-//     origin: "http://localhost:3000",
-//     // credentials: true,
-//   },
-// });
-
-// io.on("connection", (socket) => {
-//   console.log("Connected to socket.io");
-//   socket.on("setup", (userData) => {
-//     socket.join(userData._id);
-//     socket.emit("connected");
-//   });
-//   socket.on("join chat", (room) => {
-//     socket.join(room);
-//     console.log("User Joined Room: " + room);
-//   });
-
-//   socket.on("typing", (room) => socket.in(room).emit("typing"));
-//   socket.on("stop typing", (room) => socket.in(room).emit("stop typing"));
-//    socket.on("new message", (newMessageRecieved) => {
-//     var chat = newMessageRecieved.chat;
-
-//     if (!chat.users) return console.log("chat.users not defined");
-
-//     chat.users.forEach((user) => {
-//       if (user._id == newMessageRecieved.sender._id) return;
-
-//       socket.in(user._id).emit("message recieved", newMessageRecieved);
-//     });
-//   });
-//   socket.off("setup", () => {
-//     console.log("USER DISCONNECTED");
-//     socket.leave(userData._id);
-//   });
-// });
-
 const express = require("express");
 const connectDB = require("./config/db");
 const dotenv = require("dotenv");
@@ -77,22 +6,28 @@ const chatRoutes = require("./routes/chatRoutes");
 const messageRoutes = require("./routes/messageRoutes");
 const { notFound, errorHandler } = require("./middleware/errorMiddleware");
 const path = require("path");
+const cors = require("cors");
 
-dotenv.config();
+const Message = require("./models/messageModel");
+const User = require("./models/userModel");
+
+dotenv.config({ path: require("path").join(__dirname, ".env") });
 connectDB();
+
 const app = express();
 
-app.use(express.json()); // to accept json data
+app.use(
+  cors({
+    origin: process.env.CORS_ORIGIN || "http://localhost:3000",
+    credentials: true,
+  }),
+);
 
-// app.get("/", (req, res) => {
-//   res.send("API Running!");
-// });
+app.use(express.json());
 
 app.use("/api/user", userRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/message", messageRoutes);
-
-// --------------------------deployment------------------------------
 
 const __dirname1 = path.resolve();
 
@@ -100,7 +35,7 @@ if (process.env.NODE_ENV === "production") {
   app.use(express.static(path.join(__dirname1, "/frontend/build")));
 
   app.get("*", (req, res) =>
-    res.sendFile(path.resolve(__dirname1, "frontend", "build", "index.html"))
+    res.sendFile(path.resolve(__dirname1, "frontend", "build", "index.html")),
   );
 } else {
   app.get("/", (req, res) => {
@@ -108,67 +43,295 @@ if (process.env.NODE_ENV === "production") {
   });
 }
 
-// --------------------------deployment------------------------------
-const _dirname1 = path.resolve();
-
-if (process.env.NODE_ENV === "production") {
-  app.use(express.static(path.join(__dirname1, "/frontend/build")));
-
-  app.get("*", (req, res) =>
-    res.sendFile(path.resolve(__dirname1, "frontend", "build", "index.html"))
-  );
-} else {
-  app.get("/", (req, res) => {
-    res.send("API is running..");
-  });
-}
-// Error Handling middlewares
 app.use(notFound);
 app.use(errorHandler);
 
-const PORT = process.env.PORT;
+const PORT = process.env.PORT || 5000;
 
 const server = app.listen(
   PORT,
-  console.log(`Server running on PORT ${PORT}...`.yellow.bold)
+  console.log(`Server running on PORT ${PORT}...`),
 );
 
 const io = require("socket.io")(server, {
   pingTimeout: 60000,
   cors: {
-    origin: "http://localhost:3000",
-    // credentials: true,
+    origin: process.env.CORS_ORIGIN || "http://localhost:3000",
   },
 });
 
+// Pass io object to Express app so routes can access it
+app.set("io", io);
+
+console.log("\n[✅ SOCKET.IO INITIALIZED AND SET ON APP]\n");
+
+const onlineUsers = new Map();
+
+// Scheduled message delivery worker
+setInterval(async () => {
+  try {
+    const pendingMessages = await Message.find({
+      isScheduled: true,
+      scheduledSent: false,
+      scheduledFor: { $lte: new Date() },
+    })
+      .populate("sender", "name pic email")
+      .populate({
+        path: "chat",
+        populate: {
+          path: "users",
+          select: "name pic email",
+        },
+      })
+      .populate("reactions.user", "name pic email")
+      .populate({
+        path: "replyTo",
+        populate: {
+          path: "sender",
+          select: "name pic email",
+        },
+      });
+
+    for (const message of pendingMessages) {
+      console.log("[SCHEDULED MESSAGE SENT]", message._id);
+
+      message.scheduledSent = true;
+      await message.save();
+
+      const chat = message.chat;
+
+      if (!chat?.users) continue;
+
+      chat.users.forEach((user) => {
+        // sender should only receive scheduled update
+        if (user._id.toString() === message.sender._id.toString()) {
+          io.to(user._id.toString()).emit("scheduled message sent", {
+            ...message.toObject(),
+            scheduledSent: true,
+            isScheduled: false,
+          });
+          return;
+        }
+
+        // receivers should get normal realtime message flow
+        io.to(user._id.toString()).emit("message recieved", {
+          ...message.toObject(),
+          scheduledSent: true,
+          isScheduled: false,
+        });
+      });
+    }
+  } catch (error) {
+    console.error("Scheduled message worker error", error);
+  }
+}, 10000);
+
 io.on("connection", (socket) => {
-  console.log("Connected to socket.io");
+  console.log("Connected to socket.io, socket id:", socket.id);
+
   socket.on("setup", (userData) => {
-    socket.join(userData._id);
+    socket.join(userData._id.toString());
+
+    onlineUsers.set(userData._id.toString(), socket.id);
+
+    // user came online
+    User.findByIdAndUpdate(userData._id, {
+      lastSeen: new Date(),
+    }).catch((err) =>
+      console.error("LAST SEEN ONLINE UPDATE ERROR", err),
+    );
+
+    socket.emit("online users", Array.from(onlineUsers.keys()));
+
+    socket.broadcast.emit("user online", userData._id);
+
     socket.emit("connected");
   });
 
   socket.on("join chat", (room) => {
     socket.join(room);
-    console.log("User Joined Room: " + room);
+    console.log(`[SOCKET JOIN] User joined room: ${room}`);
   });
+
   socket.on("typing", (room) => socket.in(room).emit("typing"));
   socket.on("stop typing", (room) => socket.in(room).emit("stop typing"));
 
   socket.on("new message", (newMessageRecieved) => {
-    var chat = newMessageRecieved.chat;
+    const chat = newMessageRecieved.chat;
 
-    if (!chat.users) return console.log("chat.users not defined");
+    if (!chat.users) return;
 
     chat.users.forEach((user) => {
-      if (user._id == newMessageRecieved.sender._id) return;
+      if (user._id.toString() === newMessageRecieved.sender._id.toString()) {
+        return;
+      }
 
-      socket.in(user._id).emit("message recieved", newMessageRecieved);
+      console.log(
+        "[SOCKET MESSAGE DELIVERY]",
+        user._id.toString(),
+        newMessageRecieved._id,
+      );
+
+      io.to(user._id.toString()).emit("message recieved", newMessageRecieved);
     });
   });
 
-  socket.off("setup", () => {
-    console.log("USER DISCONNECTED");
-    socket.leave(userData._id);
+  socket.on("message reaction", (updatedMessage) => {
+    const chat = updatedMessage.chat;
+
+    if (!chat.users) return;
+
+    chat.users.forEach((user) => {
+      io.to(user._id.toString()).emit(
+        "message reaction updated",
+        updatedMessage,
+      );
+    });
+  });
+
+  socket.on("message edited", (updatedMessage) => {
+    const chat = updatedMessage.chat;
+
+    if (!chat.users) return;
+
+    chat.users.forEach((user) => {
+      io.to(user._id.toString()).emit("message edited update", updatedMessage);
+    });
+  });
+
+  socket.on("message deleted", (updatedMessage) => {
+    const chat = updatedMessage.chat;
+
+    if (!chat.users) return;
+
+    chat.users.forEach((user) => {
+      io.to(user._id.toString()).emit("message deleted update", updatedMessage);
+    });
+  });
+
+  socket.on("message seen", async ({ messageId, chatId, userId }) => {
+    try {
+      console.log(
+        "[BACKEND MESSAGE SEEN RECEIVED]",
+        messageId,
+        chatId,
+        userId,
+      );
+
+      let updatedMessage = await Message.findById(messageId)
+        .populate("sender", "name pic email")
+        .populate({
+          path: "chat",
+          populate: {
+            path: "users",
+            select: "name pic email",
+          },
+        })
+        .populate("replyTo");
+
+      if (!updatedMessage) {
+        console.log("[MESSAGE NOT FOUND FOR SEEN UPDATE]");
+        return;
+      }
+
+      // prevent duplicate seen entries
+      const alreadySeen = updatedMessage.seenBy?.some(
+        (id) => id.toString() === userId,
+      );
+
+      if (!alreadySeen) {
+        updatedMessage.seenBy.push(userId);
+      }
+
+      updatedMessage.seen = true;
+      updatedMessage.seenAt = new Date();
+
+      // allSeen means every OTHER member has seen message
+      const otherUsers = updatedMessage.chat.users.filter(
+        (u) =>
+          u._id.toString() !==
+          updatedMessage.sender._id.toString(),
+      );
+
+      const allSeen = otherUsers.every((u) =>
+        updatedMessage.seenBy.some(
+          (id) => id.toString() === u._id.toString(),
+        ),
+      );
+
+      updatedMessage.allSeen = allSeen;
+
+      await updatedMessage.save();
+
+      updatedMessage = await Message.findById(messageId)
+        .populate("sender", "name pic email")
+        .populate({
+          path: "chat",
+          populate: {
+            path: "users",
+            select: "name pic email",
+          },
+        })
+        .populate("seenBy", "name pic email")
+        .populate("replyTo");
+
+      updatedMessage.chat.users.forEach((user) => {
+        io.to(user._id.toString()).emit("messages seen", {
+          chatId,
+          messageIds: [messageId],
+          message: updatedMessage,
+        });
+      });
+
+      console.log(
+        "[BACKEND EMIT GROUP MESSAGE SEEN]",
+        messageId,
+        "allSeen:",
+        updatedMessage.allSeen,
+      );
+    } catch (error) {
+      console.error("MESSAGE SEEN SOCKET ERROR", error);
+    }
+  });
+
+  socket.on("message seen update", (updatedMessage) => {
+    const chat = updatedMessage.chat;
+
+    if (!chat?.users) return;
+
+    chat.users.forEach((user) => {
+      io.to(user._id.toString()).emit("message seen updated", updatedMessage);
+    });
+  });
+
+  socket.on("disconnect", async () => {
+    for (let [userId, socketId] of onlineUsers.entries()) {
+      if (socketId === socket.id) {
+        onlineUsers.delete(userId);
+
+        const lastSeen = new Date();
+
+        try {
+          await User.findByIdAndUpdate(userId, {
+            lastSeen,
+          });
+
+          io.emit("user offline", {
+            userId,
+            lastSeen,
+          });
+
+          console.log(
+            "[USER OFFLINE LAST SEEN UPDATED]",
+            userId,
+            lastSeen,
+          );
+        } catch (error) {
+          console.error("LAST SEEN UPDATE ERROR", error);
+        }
+
+        break;
+      }
+    }
   });
 });

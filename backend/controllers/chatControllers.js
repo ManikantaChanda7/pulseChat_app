@@ -2,6 +2,68 @@ const asyncHandler = require("express-async-handler");
 const Chat = require("../models/chatModel");
 const User = require("../models/userModel");
 
+// @desc    Toggle Pin Chat
+// @route   PUT /api/chat/pin/:chatId
+// @access  Protected
+const togglePinChat = asyncHandler(async (req, res) => {
+  try {
+    const chat = await Chat.findById(req.params.chatId);
+
+    if (!chat) {
+      res.status(404);
+      throw new Error("Chat not found");
+    }
+
+    const isPinned = chat.pinnedBy.some(
+      (userId) => userId.toString() === req.user._id.toString()
+    );
+
+    let updatedChat;
+
+    if (isPinned) {
+      updatedChat = await Chat.findByIdAndUpdate(
+        req.params.chatId,
+        {
+          $pull: {
+            pinnedBy: req.user._id,
+          },
+        },
+        {
+          new: true,
+        }
+      )
+        .populate("users", "-password")
+        .populate("groupAdmin", "-password")
+        .populate("latestMessage");
+    } else {
+      updatedChat = await Chat.findByIdAndUpdate(
+        req.params.chatId,
+        {
+          $addToSet: {
+            pinnedBy: req.user._id,
+          },
+        },
+        {
+          new: true,
+        }
+      )
+        .populate("users", "-password")
+        .populate("groupAdmin", "-password")
+        .populate("latestMessage");
+    }
+
+    updatedChat = await User.populate(updatedChat, {
+      path: "latestMessage.sender",
+      select: "name pic email",
+    });
+
+    res.status(200).json(updatedChat);
+  } catch (error) {
+    res.status(400);
+    throw new Error(error.message);
+  }
+});
+
 //@description     Create or fetch One to One Chat
 //@route           POST /api/chat/
 //@access          Protected
@@ -200,4 +262,5 @@ module.exports = {
   renameGroup,
   addToGroup,
   removeFromGroup,
+  togglePinChat,
 };

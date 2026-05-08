@@ -1,20 +1,11 @@
-import {
-  Box,
-  Container,
-  Tab,
-  TabList,
-  TabPanel,
-  TabPanels,
-  Tabs,
-  Text,
-} from "@chakra-ui/react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useHistory } from "react-router";
 import Login from "../components/Authentication/Login";
 import Signup from "../components/Authentication/Signup";
 
 function Homepage() {
   const history = useHistory();
+  const [activeTab, setActiveTab] = useState("login");
 
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem("userInfo"));
@@ -23,38 +14,30 @@ function Homepage() {
   }, [history]);
 
   return (
-    <Container maxW="xl" centerContent>
-      <Box
-        d="flex"
-        justifyContent="center"
-        p={3}
-        bg="white"
-        w="100%"
-        m="40px 0 15px 0"
-        borderRadius="lg"
-        borderWidth="1px"
-      >
-        <Text fontSize="4xl" fontFamily="Work sans">
-          Talk-A-Tive
-        </Text>
-      </Box>
-      <Box bg="white" w="100%" p={4} borderRadius="lg" borderWidth="1px">
-        <Tabs isFitted variant="soft-rounded">
-          <TabList mb="1em">
-            <Tab>Login</Tab>
-            <Tab>Sign Up</Tab>
-          </TabList>
-          <TabPanels>
-            <TabPanel>
-              <Login />
-            </TabPanel>
-            <TabPanel>
-              <Signup />
-            </TabPanel>
-          </TabPanels>
-        </Tabs>
-      </Box>
-    </Container>
+    <div className="flex flex-col items-center w-full min-h-screen bg-gray-100">
+      <div className="bg-white w-full max-w-xl mt-10 mb-4 p-4 rounded-lg border text-center">
+        <h1 className="text-4xl font-semibold">Talk-A-Tive</h1>
+      </div>
+
+      <div className="bg-white w-full max-w-xl p-4 rounded-lg border">
+        <div className="flex mb-4">
+          <button
+            className={`flex-1 py-2 rounded-l-lg ${activeTab === "login" ? "bg-blue-500 text-white" : "bg-gray-200"}`}
+            onClick={() => setActiveTab("login")}
+          >
+            Login
+          </button>
+          <button
+            className={`flex-1 py-2 rounded-r-lg ${activeTab === "signup" ? "bg-blue-500 text-white" : "bg-gray-200"}`}
+            onClick={() => setActiveTab("signup")}
+          >
+            Sign Up
+          </button>
+        </div>
+
+        {activeTab === "login" ? <Login /> : <Signup />}
+      </div>
+    </div>
   );
 }
 

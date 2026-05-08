@@ -1,11 +1,10 @@
-import { Button } from "@chakra-ui/button";
-import { FormControl, FormLabel } from "@chakra-ui/form-control";
-import { Input, InputGroup, InputRightElement } from "@chakra-ui/input";
-import { VStack } from "@chakra-ui/layout";
-import { useToast } from "@chakra-ui/toast";
-import axios from "axios";
+import API from "../../config/api";
 import { useState } from "react";
 import { useHistory } from "react-router";
+
+// Cloudinary Configuration
+const CLOUDINARY_CLOUD_NAME = process.env.REACT_APP_CLOUDINARY_CLOUD_NAME || "dgrpyrxrn";
+const CLOUDINARY_UPLOAD_PRESET = process.env.REACT_APP_CLOUDINARY_UPLOAD_PRESET || "chat-app";
 
 const Signup = () => {
   const [show, setShow] = useState(false);
@@ -18,29 +17,18 @@ const Signup = () => {
   const [password, setPassword] = useState();
   const [pic, setPic] = useState();
   const [picLoading, setPicLoading] = useState(false);
-  const toast = useToast();
 
   const submitHandler = async () => {
     setPicLoading(true);
+    console.log("[Signup] Clicked submit");
+    console.log("[Signup] Values:", { name, email, password, confirmpassword, pic });
     if (!name || !email || !password || !confirmpassword) {
-      toast({
-        title: "Please Fill all the Feilds",
-        status: "warning",
-        duration: 5000,
-        isClosable: true,
-        position: "bottom",
-      });
+      console.warn("Please Fill all the Feilds");
       setPicLoading(false);
       return;
     }
     if (password !== confirmpassword) {
-      toast({
-        title: "Passwords Do Not Match",
-        status: "warning",
-        duration: 5000,
-        isClosable: true,
-        position: "bottom",
-      });
+      console.warn("Passwords Do Not Match");
       return;
     }
     console.log(name, email, password, pic);
@@ -50,7 +38,8 @@ const Signup = () => {
           "Content-type": "application/json",
         },
       };
-      const { data } = await axios.post(
+      console.log("[Signup] Sending request to backend...");
+      const { data } = await API.post(
         "/api/user",
         {
           name,
@@ -60,26 +49,14 @@ const Signup = () => {
         },
         config
       );
-      console.log(data);
-      toast({
-        title: "Registration Successful",
-        status: "success",
-        duration: 5000,
-        isClosable: true,
-        position: "bottom",
-      });
+      console.log("[Signup] Response received:", data);
+      console.log("Registration Successful");
       localStorage.setItem("userInfo", JSON.stringify(data));
       setPicLoading(false);
       history.push("/chats");
     } catch (error) {
-      toast({
-        title: "Error Occured!",
-        description: error.response.data.message,
-        status: "error",
-        duration: 5000,
-        isClosable: true,
-        position: "bottom",
-      });
+      console.log("[Signup] Error:", error);
+      console.error("Error Occured!", error.response?.data?.message || error.message);
       setPicLoading(false);
     }
   };
@@ -87,22 +64,16 @@ const Signup = () => {
   const postDetails = (pics) => {
     setPicLoading(true);
     if (pics === undefined) {
-      toast({
-        title: "Please Select an Image!",
-        status: "warning",
-        duration: 5000,
-        isClosable: true,
-        position: "bottom",
-      });
+      console.warn("Please Select an Image!");
       return;
     }
     console.log(pics);
     if (pics.type === "image/jpeg" || pics.type === "image/png") {
       const data = new FormData();
       data.append("file", pics);
-      data.append("upload_preset", "chat-app");
-      data.append("cloud_name", "dng5p72wd");
-      fetch("https://api.cloudinary.com/v1_1/dng5p72wd/image/upload", {
+      data.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+      data.append("cloud_name", CLOUDINARY_CLOUD_NAME);
+      fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
         method: "post",
         body: data,
       })
@@ -117,13 +88,7 @@ const Signup = () => {
           setPicLoading(false);
         });
     } else {
-      toast({
-        title: "Please Select an Image!",
-        status: "warning",
-        duration: 5000,
-        isClosable: true,
-        position: "bottom",
-      });
+      console.warn("Please Select an Image!");
       setPicLoading(false);
       return;
           
@@ -131,71 +96,80 @@ const Signup = () => {
   };
 
   return (
-    <VStack spacing="5px">
-      <FormControl id="first-name" isRequired>
-        <FormLabel>Name</FormLabel>
-        <Input
+    <div className="flex flex-col gap-3">
+      <div>
+        <label className="block mb-1 text-sm font-medium">Name</label>
+        <input
+          className="w-full p-2 border rounded"
           placeholder="Enter Your Name"
           onChange={(e) => setName(e.target.value)}
         />
-      </FormControl>
-      <FormControl id="email" isRequired>
-        <FormLabel>Email Address</FormLabel>
-        <Input
+      </div>
+
+      <div>
+        <label className="block mb-1 text-sm font-medium">Email Address</label>
+        <input
+          className="w-full p-2 border rounded"
           type="email"
           placeholder="Enter Your Email Address"
           onChange={(e) => setEmail(e.target.value)}
         />
-      </FormControl>
-      <FormControl id="password" isRequired>
-        <FormLabel>Password</FormLabel>
-        <InputGroup size="md">
-          <Input
+      </div>
+
+      <div>
+        <label className="block mb-1 text-sm font-medium">Password</label>
+        <div className="flex">
+          <input
+            className="w-full p-2 border rounded-l"
             type={show ? "text" : "password"}
             placeholder="Enter Password"
             onChange={(e) => setPassword(e.target.value)}
           />
-          <InputRightElement width="4.5rem">
-            <Button h="1.75rem" size="sm" onClick={handleClick}>
-              {show ? "Hide" : "Show"}
-            </Button>
-          </InputRightElement>
-        </InputGroup>
-      </FormControl>
-      <FormControl id="password" isRequired>
-        <FormLabel>Confirm Password</FormLabel>
-        <InputGroup size="md">
-          <Input
+          <button
+            onClick={handleClick}
+            className="px-3 bg-gray-200 border rounded-r"
+          >
+            {show ? "Hide" : "Show"}
+          </button>
+        </div>
+      </div>
+
+      <div>
+        <label className="block mb-1 text-sm font-medium">Confirm Password</label>
+        <div className="flex">
+          <input
+            className="w-full p-2 border rounded-l"
             type={show ? "text" : "password"}
             placeholder="Confirm password"
             onChange={(e) => setConfirmpassword(e.target.value)}
           />
-          <InputRightElement width="4.5rem">
-            <Button h="1.75rem" size="sm" onClick={handleClick}>
-              {show ? "Hide" : "Show"}
-            </Button>
-          </InputRightElement>
-        </InputGroup>
-      </FormControl>
-      <FormControl id="pic">
-        <FormLabel>Upload your Picture</FormLabel>
-        <Input
+          <button
+            onClick={handleClick}
+            className="px-3 bg-gray-200 border rounded-r"
+          >
+            {show ? "Hide" : "Show"}
+          </button>
+        </div>
+      </div>
+
+      <div>
+        <label className="block mb-1 text-sm font-medium">Upload your Picture</label>
+        <input
           type="file"
-          p={1.5}
+          className="w-full p-2 border rounded"
           accept="image/*"
           onChange={(e) => postDetails(e.target.files[0])}
         />
-      </FormControl>
-      <Button
-        colorScheme="blue"
-        width="100%"
-        style={{ marginTop: 15 }}
+      </div>
+
+      <button
         onClick={submitHandler}
-        isLoading={picLoading}
+        className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600"
+        disabled={picLoading}
       >
-        Sign Up
-      </Button>
-    </VStack>
+        {picLoading ? "Loading..." : "Sign Up"}
+      </button>
+    </div>
   );
 };
 

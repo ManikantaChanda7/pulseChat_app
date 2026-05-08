@@ -16,6 +16,10 @@ const userSchema = mongoose.Schema(
       required: true,
       default: false,
     },
+    lastSeen: {
+      type: Date,
+      default: Date.now,
+    },
   },
   { timestaps: true }
 );
