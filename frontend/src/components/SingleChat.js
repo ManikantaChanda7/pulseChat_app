@@ -115,6 +115,7 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
   const [replyMessage, setReplyMessage] = useState(null);
 
   const [showSchedulePicker, setShowSchedulePicker] = useState(false);
+  const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
   const [scheduledDateTime, setScheduledDateTime] = useState("");
   const sendScheduledMessage = async () => {
     if (!newMessage || !scheduledDateTime) return;
@@ -1076,9 +1077,9 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
     <>
       {selectedChat ? (
         <>
-          <div className="text-[28px] md:text-[30px] pb-3 px-2 w-full flex justify-between items-center font-semibold">
+          <div className="mb-3 flex w-full items-center justify-between rounded-[24px] border border-slate-200/70 dark:border-white/5 bg-white/70 dark:bg-[#151821]/70 px-4 py-3 backdrop-blur-xl shadow-sm">
             <button
-              className="md:hidden px-2 py-1 bg-gray-200 rounded"
+              className="md:hidden flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-slate-200 transition-all hover:scale-105"
               onClick={() => setSelectedChat("")}
             >
               ←
@@ -1106,10 +1107,12 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
 
                   return (
                     <>
-                      <div className="flex flex-col">
-                        <span>{getSender(user, selectedChat.users)}</span>
+                      <div className="flex flex-col min-w-0">
+                        <span className="truncate text-base font-semibold tracking-tight text-slate-800 dark:text-white">
+                          {getSender(user, selectedChat.users)}
+                        </span>
                         <span
-                          className={`text-xs ${isOnline ? "text-green-500" : "text-gray-500"}`}
+                          className={`mt-0.5 text-[11px] font-medium ${isOnline ? "text-emerald-500" : "text-slate-500 dark:text-slate-400"}`}
                         >
                           {isOnline
                             ? "Online"
@@ -1124,7 +1127,15 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
                 })()
               ) : (
                 <>
-                  {selectedChat.chatName.toUpperCase()}
+                  <div className="flex flex-col">
+                    <span className="text-base font-semibold tracking-tight text-slate-800 dark:text-white">
+                      {selectedChat.chatName}
+                    </span>
+
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                      Group conversation
+                    </span>
+                  </div>
                   <UpdateGroupChatModal
                     fetchMessages={fetchMessages}
                     fetchAgain={fetchAgain}
@@ -1133,20 +1144,22 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
                 </>
               ))}
           </div>
-          <div className="flex flex-col w-full h-full rounded-lg overflow-hidden bg-gradient-to-b from-gray-100 to-gray-200">
+          <div className="flex h-full w-full flex-col overflow-hidden rounded-[28px] border border-slate-200/70 dark:border-white/5 bg-[#f5f5f5] dark:bg-[#0f1117] shadow-sm">
             <input
               type="text"
               placeholder="Search messages..."
               value={messageSearch}
               onChange={(e) => setMessageSearch(e.target.value)}
-              className="m-2 p-2 rounded-md border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className="mx-3 mt-3 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#1a1e27] px-4 py-2.5 text-sm text-slate-700 dark:text-slate-100 outline-none transition-all placeholder:text-slate-400 focus:ring-2 focus:ring-orange-400"
             />
             {loading ? (
-              <div className="text-center text-gray-500">Loading...</div>
+              <div className="flex flex-1 items-center justify-center text-sm text-slate-500 dark:text-slate-400">
+                Loading conversation...
+              </div>
             ) : (
               <div
                 ref={scrollContainerRef}
-                className="flex-1 overflow-y-auto px-3 py-2 flex flex-col"
+                className="flex flex-1 flex-col overflow-y-auto px-3 py-3"
                 onScroll={(e) => {
                   const { scrollTop, scrollHeight, clientHeight } = e.target;
 
@@ -1160,8 +1173,8 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
                 }}
               >
                 {loadingMore && (
-                  <div className="text-center text-gray-500 text-xs mb-2">
-                    Loading more...
+                  <div className="mb-2 text-center text-[11px] text-slate-500 dark:text-slate-400">
+                    Loading older messages...
                   </div>
                 )}
                 <>
@@ -1178,13 +1191,13 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
             )}
 
             {imageLoading && (
-              <div className="text-xs text-gray-500 mb-1">
-                Uploading image...
+              <div className="px-4 py-1 text-[11px] text-slate-500 dark:text-slate-400">
+                Uploading media...
               </div>
             )}
             <div
               onKeyDown={sendMessage}
-              className="mt-2 px-3 py-2 bg-white/80 backdrop-blur border-t"
+              className="border-t border-slate-200/70 dark:border-white/5 bg-white/70 dark:bg-[#151821]/70 px-3 py-3 backdrop-blur-xl"
             >
               {istyping ? (
                 <div>
@@ -1199,16 +1212,16 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
                 <></>
               )}
               {replyMessage && (
-                <div className="mb-2 flex items-start justify-between gap-3 bg-blue-50 border-l-4 border-blue-500 rounded-lg px-3 py-2">
+                <div className="mb-3 flex items-start justify-between gap-3 rounded-2xl border border-orange-200 dark:border-orange-500/10 bg-orange-50/80 dark:bg-orange-500/5 px-3 py-3">
                   <div className="flex flex-col overflow-hidden">
-                    <span className="text-xs font-semibold text-blue-700 mb-1">
+                    <span className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-orange-500">
                       Replying to{" "}
                       {replyMessage.sender._id === user._id
                         ? "Yourself"
                         : replyMessage.sender.name}
                     </span>
 
-                    <span className="text-sm text-gray-700 truncate max-w-[300px]">
+                    <span className="max-w-[260px] truncate text-sm text-slate-700 dark:text-slate-300">
                       {replyMessage.messageType === "voice" ||
                       replyMessage.content?.includes("/video/upload/")
                         ? "🎙️ Voice Message"
@@ -1221,24 +1234,24 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
 
                   <button
                     onClick={() => setReplyMessage(null)}
-                    className="text-gray-500 hover:text-black text-sm"
+                    className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 transition-all hover:bg-black/5 dark:hover:bg-white/5"
                   >
                     ✕
                   </button>
                 </div>
               )}
               {showSchedulePicker && (
-                <div className="mb-2 flex items-center gap-2 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2">
+                <div className="mb-3 flex flex-col gap-2 rounded-2xl border border-amber-200 dark:border-amber-500/10 bg-amber-50/70 dark:bg-amber-500/5 px-3 py-3 md:flex-row md:items-center">
                   <input
                     type="datetime-local"
                     value={scheduledDateTime}
                     onChange={(e) => setScheduledDateTime(e.target.value)}
-                    className="border rounded px-2 py-1 text-sm"
+                    className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#1a1e27] px-3 py-2 text-sm outline-none"
                   />
 
                   <button
                     onClick={sendScheduledMessage}
-                    className="px-3 py-1 rounded bg-yellow-500 hover:bg-yellow-600 text-white text-sm"
+                    className="rounded-xl bg-gradient-to-r from-orange-400 to-amber-500 px-4 py-2 text-sm font-medium text-white transition-all hover:scale-[1.02]"
                   >
                     Schedule
                   </button>
@@ -1262,30 +1275,43 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
                   id="fileUpload"
                 />
 
-                <div className="flex items-center gap-2">
-                  <label
-                    htmlFor="imageUpload"
-                    className="cursor-pointer px-2 py-1 bg-gray-200 rounded"
+                <div className="relative">
+                  <button
+                    onClick={() => setShowAttachmentMenu((prev) => !prev)}
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-[24px] font-light leading-none text-slate-700 transition-all hover:scale-105 dark:bg-white/5 dark:text-slate-200"
                   >
-                    🖼️
-                  </label>
+                    ＋
+                  </button>
 
-                  <label
-                    htmlFor="fileUpload"
-                    className="cursor-pointer px-2 py-1 bg-gray-200 rounded"
-                  >
-                    📎
-                  </label>
+                  {showAttachmentMenu && (
+                    <div className="absolute bottom-14 left-0 z-50 flex min-w-[180px] flex-col overflow-hidden rounded-2xl border border-slate-200/70 bg-white/95 shadow-xl backdrop-blur-xl dark:border-white/5 dark:bg-[#171b24]/95">
+                      <label
+                        htmlFor="imageUpload"
+                        className="flex cursor-pointer items-center gap-3 px-4 py-3 text-sm text-slate-700 transition-all hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/5"
+                      >
+                        <span className="text-base">🖼️</span>
+                        Upload Image
+                      </label>
+
+                      <label
+                        htmlFor="fileUpload"
+                        className="flex cursor-pointer items-center gap-3 px-4 py-3 text-sm text-slate-700 transition-all hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/5"
+                      >
+                        <span className="text-base">📄</span>
+                        Upload File
+                      </label>
+                    </div>
+                  )}
                 </div>
 
                 {isRecording ? (
-                  <div className="flex items-center gap-2 bg-red-50 border border-red-200 px-3 py-2 rounded-lg flex-1">
+                  <div className="flex flex-1 items-center gap-2 rounded-2xl border border-red-200 dark:border-red-500/10 bg-red-50/70 dark:bg-red-500/5 px-3 py-2">
                     <div className="flex items-center gap-2 text-red-500 font-medium text-sm">
                       <span className="animate-pulse text-lg">🔴</span>
                       <span>Recording...</span>
                     </div>
 
-                    <span className="text-sm font-semibold text-gray-700 min-w-[40px]">
+                    <span className="min-w-[42px] text-sm font-semibold text-slate-700 dark:text-slate-200">
                       {Math.floor(recordingTime / 60)
                         .toString()
                         .padStart(2, "0")}
@@ -1295,14 +1321,14 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
                     <div className="flex items-center gap-2 ml-auto">
                       <button
                         onClick={cancelRecording}
-                        className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 text-sm"
+                        className="rounded-xl bg-slate-200 dark:bg-white/10 px-3 py-1.5 text-sm text-slate-700 dark:text-slate-200"
                       >
                         ✕
                       </button>
 
                       <button
                         onClick={stopRecording}
-                        className="px-3 py-1 rounded bg-green-500 hover:bg-green-600 text-white text-sm"
+                        className="rounded-xl bg-emerald-500 px-3 py-1.5 text-sm text-white"
                       >
                         Send
                       </button>
@@ -1311,33 +1337,99 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
                 ) : (
                   <button
                     onClick={startRecording}
-                    className="px-3 py-1 rounded text-white bg-blue-500 hover:bg-blue-600"
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-700 transition-all hover:scale-105 dark:bg-white/5 dark:text-slate-200"
                   >
-                    🎙️
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M12 18v3m0 0h3m-3 0H9m3-3a5 5 0 005-5V7a5 5 0 10-10 0v6a5 5 0 005 5zm8-5a8 8 0 01-16 0"
+                      />
+                    </svg>
                   </button>
                 )}
 
                 <button
                   onClick={() => setShowSchedulePicker((prev) => !prev)}
-                  className="px-3 py-1 rounded bg-yellow-400 hover:bg-yellow-500 text-black"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-100 text-orange-500 transition-all hover:scale-105 dark:bg-orange-500/10"
                 >
-                  ⏰
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
                 </button>
 
-                <input
-                  className="flex-1 p-2 rounded-lg bg-gray-100 border focus:outline-none focus:ring-2 focus:ring-blue-400"
-                  placeholder="Enter a message.."
-                  value={newMessage}
-                  onChange={typingHandler}
-                />
+                <div className="flex h-12 flex-1 items-center gap-2 rounded-2xl border border-slate-200 bg-white pl-4 pr-2 dark:border-white/10 dark:bg-[#1a1e27] focus-within:ring-2 focus-within:ring-orange-400">
+                  <input
+                    className="flex-1 bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400 dark:text-slate-100"
+                    placeholder="Type a message..."
+                    value={newMessage}
+                    onChange={typingHandler}
+                  />
+
+                  <button
+                    onClick={() => {
+                      if (!newMessage) return;
+
+                      sendMessage({
+                        key: "Enter",
+                      });
+                    }}
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-r from-orange-400 to-amber-500 text-white shadow-sm transition-all hover:scale-105"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-4 w-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M5 12h14M12 5l7 7-7 7"
+                      />
+                    </svg>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         </>
       ) : (
         // to get socket.io on same page
-        <div className="flex items-center justify-center h-full">
-          <p className="text-2xl pb-3">Click on a user to start chatting</p>
+        <div className="flex h-full items-center justify-center rounded-[28px] border border-slate-200/70 dark:border-white/5 bg-[#f5f5f5] dark:bg-[#0f1117] p-6">
+          <div className="text-center">
+            <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-[24px] bg-gradient-to-br from-orange-400 to-amber-500 text-4xl text-white shadow-md">
+              💬
+            </div>
+
+            <p className="mb-2 text-xl font-semibold tracking-tight text-slate-800 dark:text-white">
+              No conversation selected
+            </p>
+
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              Choose a conversation from the sidebar to start chatting.
+            </p>
+          </div>
         </div>
       )}
     </>

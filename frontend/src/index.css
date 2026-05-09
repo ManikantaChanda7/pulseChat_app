@@ -2,16 +2,198 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap");
+
+/* Base Styles */
+* {
+  @apply transition-colors duration-base;
+}
+
+html {
+  @apply scroll-smooth;
+}
+
 body {
+  @apply bg-[#f4f1ea] text-slate-900 dark:bg-[#0f1115] dark:text-slate-50;
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+  min-height: 100vh;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
+    "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
     sans-serif;
+  background-image: theme("backgroundImage.mesh-light");
+  background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
+.dark body {
+  background-image: theme("backgroundImage.mesh-dark");
+}
+
 code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+  font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
     monospace;
+}
+
+/* Glass Morphism Components */
+@layer components {
+  .glass {
+    @apply relative overflow-hidden backdrop-blur-xl bg-white/55 dark:bg-[#181c24]/45 border border-white/20 dark:border-white/10 shadow-glass;
+  }
+
+  .glass-light {
+    @apply backdrop-blur-lg bg-white/70 dark:bg-[#1d212b]/50 border border-white/25 dark:border-white/10;
+  }
+
+  .glass-md {
+    @apply backdrop-blur-xl bg-white/60 dark:bg-[#181c24]/55 border border-white/20 dark:border-white/10 shadow-glass;
+  }
+
+  .glass-heavy {
+  @apply backdrop-blur-2xl bg-white/70 dark:bg-[#13161d]/70 border border-white/25 dark:border-white/10 shadow-elevated;
+}
+
+  /* Cards */
+  .card {
+    @apply rounded-2xl p-4 md:p-5 shadow-glass;
+  }
+
+  .card-glass {
+    @apply card glass;
+  }
+
+  .card-elevated {
+    @apply card shadow-elevated;
+  }
+
+  /* Buttons */
+  .btn-base {
+    @apply inline-flex items-center justify-center gap-1.5 text-sm font-medium rounded-xl transition-all duration-fast disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-[#0f1115];
+  }
+
+  .btn-primary {
+    @apply btn-base bg-accent-600 hover:bg-accent-700 text-white shadow-glass active:scale-95 focus:ring-accent-500;
+  }
+
+  .btn-secondary {
+    @apply btn-base glass-light text-slate-800 dark:text-slate-100 hover:scale-[1.02] active:scale-95;
+  }
+
+  .btn-ghost {
+    @apply btn-base text-slate-700 dark:text-slate-300 hover:bg-white/50 dark:hover:bg-white/5 active:scale-95;
+  }
+
+  .btn-icon {
+    @apply btn-base p-1.5 rounded-full;
+  }
+
+  /* Inputs */
+  .input-base {
+    @apply w-full rounded-xl bg-white/70 dark:bg-[#181c24]/60 border border-white/25 dark:border-white/10 px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent transition-all backdrop-blur-lg;
+  }
+
+  .input-glass {
+    @apply glass rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-accent-500 focus:ring-offset-0;
+  }
+
+  /* Text Utilities */
+  .text-gradient {
+    @apply bg-gradient-to-r from-accent-600 to-accent-500 bg-clip-text text-transparent;
+  }
+
+  .truncate-line {
+    @apply overflow-hidden text-ellipsis whitespace-nowrap;
+  }
+
+  .line-clamp-2 {
+    @apply line-clamp-2;
+  }
+
+  /* Animations */
+  .animate-in {
+    @apply animate-slide-in;
+  }
+
+  .fade-in {
+    @apply animate-fade-in;
+  }
+
+  .pulse-indicator {
+    @apply animate-pulse-soft;
+  }
+
+  /* Scrollbars */
+  ::-webkit-scrollbar {
+    @apply w-1.5 h-1.5;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-slate-300/70 dark:bg-slate-700/70 rounded-full hover:bg-slate-400 dark:hover:bg-slate-600;
+  }
+
+  /* Utilities */
+  .safe-area-top {
+    @apply pt-safe-top;
+  }
+
+  .safe-area-bottom {
+    @apply pb-safe-bottom;
+  }
+
+  .safe-area-left {
+    @apply pl-safe-left;
+  }
+
+  .safe-area-right {
+    @apply pr-safe-right;
+  }
+}
+
+/* Responsive */
+.glass-border::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.45),
+    rgba(255, 255, 255, 0.05)
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.floating-panel {
+  @apply glass rounded-2xl shadow-elevated;
+}
+
+.hover-lift {
+  @apply transition-all duration-300 hover:-translate-y-0.5 hover:shadow-elevated;
+}
+
+.chat-page-shell {
+  @apply min-h-screen bg-transparent text-slate-900 dark:text-slate-50;
+}
+
+:root {
+  --app-font-xs: 11px;
+  --app-font-sm: 13px;
+  --app-font-base: 14px;
+  --app-font-lg: 16px;
+  --app-font-xl: 18px;
+}
+
+@media (max-width: 640px) {
+  body {
+    @apply text-sm;
+  }
 }

@@ -93,28 +93,61 @@ const MyChats = ({ fetchAgain }) => {
 
   return (
     <div
-      className={`${selectedChat ? "hidden md:flex" : "flex"} flex-col items-center p-3 bg-white w-full md:w-[31%] rounded-lg border`}
+      className={`${selectedChat ? "hidden md:flex" : "flex"} w-full md:w-[340px] lg:w-[360px] flex-col rounded-[28px] bg-[#f5f5f5] dark:bg-[#0f1117] border border-slate-200/70 dark:border-white/5 overflow-hidden shadow-glass h-full`}
     >
-      <div className="pb-3 px-3 text-[28px] md:text-[30px] font-semibold flex w-full justify-between items-center">
-        My Chats
+      <div className="px-4 pt-4 pb-3 border-b border-slate-200/70 dark:border-white/5 bg-white/70 dark:bg-[#151821]/70 backdrop-blur-xl">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight text-slate-800 dark:text-white">
+              Messages
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              All conversations
+            </p>
+          </div>
+
           <GroupChatModal>
-          <button className="flex items-center gap-2 bg-gray-200 px-3 py-1 rounded-md text-sm">
-            New Group Chat
+            <button className="flex h-10 items-center gap-2 rounded-xl bg-gradient-to-r from-orange-400 to-amber-500 px-4 text-xs font-medium text-white shadow-sm transition-all hover:scale-[1.02]">
+              <span className="text-sm">＋</span>
+              New Group
+            </button>
+          </GroupChatModal>
+        </div>
+
+        <div className="flex items-center gap-2 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#1a1e27] px-3 py-2 shadow-sm">
+          <span className="text-sm text-slate-400">🔍</span>
+
+          <input
+            type="text"
+            placeholder="Search conversations"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="flex-1 bg-transparent text-sm text-slate-700 dark:text-slate-100 placeholder:text-slate-400 outline-none"
+          />
+        </div>
+
+        <div className="mt-4 flex items-center gap-4 overflow-x-auto whitespace-nowrap text-[11px] font-medium text-slate-500 dark:text-slate-400 scrollbar-hide">
+          <button className="rounded-full bg-orange-100 dark:bg-orange-500/10 px-3 py-1 text-orange-500">
+            All messages
           </button>
-        </GroupChatModal>
+
+          <button className="transition-colors hover:text-slate-700 dark:hover:text-slate-200">
+            Unread
+          </button>
+
+          <button className="transition-colors hover:text-slate-700 dark:hover:text-slate-200">
+            Favorites
+          </button>
+
+          <button className="transition-colors hover:text-slate-700 dark:hover:text-slate-200">
+            Groups
+          </button>
+        </div>
       </div>
 
-      <input
-        type="text"
-        placeholder="Search chats..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className="w-full mb-2 p-2 rounded-md border bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"
-      />
-
-      <div className="flex flex-col p-3 bg-gray-100 w-full h-full rounded-lg overflow-hidden">
+      <div className="flex flex-1 flex-col overflow-hidden bg-[#f5f5f5] dark:bg-[#0f1117] px-3 py-3">
         {chats ? (
-          <div className="flex flex-col gap-2 overflow-y-scroll">
+          <div className="flex flex-col gap-2 overflow-y-auto pr-1">
             {[...chats]
               .sort((a, b) => {
                 const aPinned = a.pinnedBy?.includes(user._id);
@@ -142,37 +175,44 @@ const MyChats = ({ fetchAgain }) => {
                     setSelectedChat(chat);
                     setNotification((prev) => prev.filter((n) => n.chat._id !== chat._id));
                   }}
-                  className={`cursor-pointer px-3 py-2 rounded-lg ${
+                  className={`group cursor-pointer rounded-2xl border px-3 py-3 transition-all duration-200 hover:-translate-y-[1px] hover:shadow-sm ${
                     selectedChat === chat
-                      ? "bg-teal-500 text-white"
-                      : "bg-gray-200 text-black"
+                      ? "bg-gradient-to-r from-orange-400 to-amber-500 border-orange-300 text-white shadow-md"
+                      : "bg-white dark:bg-[#171b24] border-slate-200/70 dark:border-white/5 text-slate-800 dark:text-slate-100 hover:bg-white/90 dark:hover:bg-[#1b202a]"
                   }`}
                   key={chat._id}
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <p>
-                        {!chat.isGroupChat
-                          ? getSender(loggedUser, chat.users)
-                          : chat.chatName}
-                      </p>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold tracking-tight">
+                          {!chat.isGroupChat
+                            ? getSender(loggedUser, chat.users)
+                            : chat.chatName}
+                        </p>
 
-                      {!chat.isGroupChat && (() => {
-                        const otherUser = chat.users.find((u) => u._id !== loggedUser._id);
-                        const isOnline = onlineUsers?.includes(otherUser?._id);
+                        {!chat.isGroupChat && (() => {
+                          const otherUser = chat.users.find((u) => u._id !== loggedUser._id);
+                          const isOnline = onlineUsers?.includes(otherUser?._id);
 
-                        return (
-                          <span
-                            className={`h-2.5 w-2.5 rounded-full ${
-                              isOnline ? "bg-green-500" : "bg-gray-400"
-                            }`}
-                          />
-                        );
-                      })()}
+                          return (
+                            <span
+                              className={`mt-0.5 h-2.5 w-2.5 rounded-full border border-white/50 ${
+                                isOnline ? "bg-emerald-500" : "bg-slate-400"
+                              }`}
+                            />
+                          );
+                        })()}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-col items-end gap-2">
                       {chat.pinnedBy?.includes(user._id) && (
-                        <span title="Pinned">📌</span>
+                        <span
+                          title="Pinned"
+                          className="text-[10px] opacity-70"
+                        >
+                          📌
+                        </span>
                       )}
 
                       <button
@@ -180,7 +220,7 @@ const MyChats = ({ fetchAgain }) => {
                           e.stopPropagation();
                           togglePinChat(chat._id);
                         }}
-                        className="text-xs hover:scale-110 transition-transform"
+                        className="text-[11px] opacity-60 transition-all hover:scale-110 hover:opacity-100"
                         title={
                           chat.pinnedBy?.includes(user._id)
                             ? "Unpin Chat"
@@ -191,26 +231,49 @@ const MyChats = ({ fetchAgain }) => {
                       </button>
 
                       {unreadCount > 0 && (
-                        <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
+                        <span className="min-w-[20px] rounded-full bg-orange-500 px-1.5 py-0.5 text-center text-[10px] font-medium text-white shadow-sm">
                           {unreadCount}
                         </span>
                       )}
                     </div>
                   </div>
                   {chat.latestMessage && (
-                    <p className="text-xs">
-                      <b>{chat.latestMessage.sender.name} : </b>
-                      {getLatestMessagePreview(chat.latestMessage).length > 50
-                        ? getLatestMessagePreview(chat.latestMessage).substring(0, 51) + "..."
-                        : getLatestMessagePreview(chat.latestMessage)}
-                    </p>
+                    <div className="mt-2 flex items-center justify-between gap-2">
+                      <p
+                        className={`truncate text-[11px] leading-relaxed ${
+                          selectedChat === chat
+                            ? "text-white/90"
+                            : "text-slate-500 dark:text-slate-400"
+                        }`}
+                      >
+                        <span className="font-medium">
+                          {chat.latestMessage.sender.name}:
+                        </span>{" "}
+
+                        {getLatestMessagePreview(chat.latestMessage).length > 45
+                          ? getLatestMessagePreview(chat.latestMessage).substring(0, 46) + "..."
+                          : getLatestMessagePreview(chat.latestMessage)}
+                      </p>
+
+                      <span
+                        className={`text-[10px] whitespace-nowrap ${
+                          selectedChat === chat
+                            ? "text-white/70"
+                            : "text-slate-400"
+                        }`}
+                      >
+                        now
+                      </span>
+                    </div>
                   )}
                 </div>
               );
             })}
           </div>
           ) :(
-          <ChatLoading />
+          <div className="px-2 py-2">
+            <ChatLoading />
+          </div>
           )}
       </div>
     </div>

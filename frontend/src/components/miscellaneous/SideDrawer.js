@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useHistory } from "react-router-dom";
 import API from "../../config/api";
 import ChatLoading from "../ChatLoading";
@@ -17,6 +17,19 @@ function SideDrawer() {
 
   const [isOpen, setIsOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    return document.documentElement.classList.contains("dark");
+  });
+
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, [isDarkMode]);
+
   const onOpen = () => setIsOpen(true);
   const onClose = () => setIsOpen(false);
 
@@ -95,97 +108,152 @@ function SideDrawer() {
 
   return (
     <>
-      <div className="flex justify-between items-center bg-white w-full px-3 py-2 border-b">
-        <button
-          onClick={onOpen}
-          className="flex items-center gap-2 px-2 py-1 rounded hover:bg-gray-100"
-        >
-          <span>🔍</span>
-          <span className="hidden md:block">Search User</span>
-        </button>
-
-        <p className="text-xl font-semibold">AMIGOS</p>
-
-        <div className="relative">
-          <button
-            onClick={() => setIsProfileOpen((prev) => !prev)}
-            className="flex items-center gap-2"
-          >
-            <img
-              src={
-                user.pic ||
-                "https://ui-avatars.com/api/?name=" +
-                  encodeURIComponent(user.name)
-              }
-              onError={(e) => {
-                e.target.src =
-                  "https://ui-avatars.com/api/?name=" +
-                  encodeURIComponent(user.name);
-              }}
-              className="h-8 w-8 rounded-full object-cover"
-              alt={user.name}
-            />
-            <span>▾</span>
-          </button>
-
-          {isProfileOpen && (
-            <div className="absolute right-0 mt-2 w-40 bg-white border rounded shadow">
-              <div className="px-3 py-2 hover:bg-gray-100 cursor-pointer">
-                <ProfileModal user={user}>
-                  <span>My Profile</span>
-                </ProfileModal>
-              </div>
-              <div className="border-t" />
-              <div
-                onClick={logoutHandler}
-                className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
-              >
-                Logout
-              </div>
+      <div className="w-full px-3 md:px-5 pt-3 md:pt-4 pb-2 bg-transparent">
+        <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/70 dark:bg-[#151821]/80 backdrop-blur-xl px-4 py-3 shadow-glass">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-orange-400 to-amber-500 text-sm font-bold text-white shadow-md">
+              S
             </div>
-          )}
+
+            <div>
+              <h1 className="text-sm md:text-base font-semibold tracking-tight text-slate-800 dark:text-white">
+                AMIGOS
+              </h1>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                Real-time messaging
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 md:gap-3">
+            <button
+              onClick={() => setIsDarkMode((prev) => !prev)}
+              className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100/80 dark:bg-white/5 text-sm transition-all hover:scale-105 text-slate-700 dark:text-slate-200"
+            >
+              {isDarkMode ? "☀️" : "🌙"}
+            </button>
+
+            <button
+              onClick={onOpen}
+              className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100/80 dark:bg-white/5 text-sm transition-all hover:scale-105 text-slate-700 dark:text-slate-200"
+            >
+              🔍
+            </button>
+
+            <div className="relative">
+              <button
+                onClick={() => setIsProfileOpen((prev) => !prev)}
+                className="flex items-center gap-2 rounded-xl bg-slate-100/80 dark:bg-white/5 p-1.5 transition-all hover:scale-[1.02]"
+              >
+                <img
+                  src={
+                    user.pic ||
+                    "https://ui-avatars.com/api/?name=" +
+                      encodeURIComponent(user.name)
+                  }
+                  onError={(e) => {
+                    e.target.src =
+                      "https://ui-avatars.com/api/?name=" +
+                      encodeURIComponent(user.name);
+                  }}
+                  className="h-8 w-8 rounded-xl object-cover"
+                  alt={user.name}
+                />
+              </button>
+
+              {isProfileOpen && (
+                <div className="absolute right-0 top-12 z-50 w-52 overflow-hidden rounded-2xl border border-white/10 bg-white/90 dark:bg-[#171a22]/95 backdrop-blur-xl shadow-elevated">
+                  <div className="px-4 py-3 hover:bg-slate-100/70 dark:hover:bg-white/5 cursor-pointer transition-all text-sm text-slate-700 dark:text-slate-200">
+                    <ProfileModal user={user}>
+                      <span>My Profile</span>
+                    </ProfileModal>
+                  </div>
+
+                  <div className="border-t border-white/10" />
+
+                  <div
+                    onClick={logoutHandler}
+                    className="px-4 py-3 hover:bg-rose-50 dark:hover:bg-rose-500/10 cursor-pointer transition-all text-sm text-rose-500"
+                  >
+                    Logout
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
       {isOpen && (
-        <div className="fixed inset-0 flex z-50">
-          <div className="w-[300px] bg-white p-3">
-            <div className="flex justify-between items-center mb-2">
-              <h2 className="text-lg font-semibold">Search Users</h2>
-              <button onClick={onClose}>✕</button>
-            </div>
+        <div className="fixed inset-0 z-50 flex">
+          <div className="w-full max-w-[360px] h-full bg-[#f5f5f5] dark:bg-[#0f1117] border-r border-white/10 shadow-elevated overflow-hidden flex flex-col">
+            <div className="p-4 border-b border-slate-200/70 dark:border-white/10 bg-white/70 dark:bg-[#151821]/80 backdrop-blur-xl">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-lg font-semibold tracking-tight text-slate-800 dark:text-white">
+                    Messages
+                  </h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Start conversations instantly
+                  </p>
+                </div>
 
-            <div className="flex gap-2 mb-2">
-              <input
-                className="border p-2 flex-1 rounded"
-                placeholder="Search by name or email"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-              <button
-                onClick={handleSearch}
-                className="bg-blue-500 text-white px-3 rounded"
-              >
-                Go
-              </button>
-            </div>
+                <button
+                  onClick={onClose}
+                  className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-300 transition-all hover:scale-105"
+                >
+                  ✕
+                </button>
+              </div>
 
-            {loading ? (
-              <ChatLoading />
-            ) : (
-              searchResult?.map((user) => (
-                <UserListItem
-                  key={user._id}
-                  user={user}
-                  handleFunction={() => accessChat(user._id)}
+              <div className="flex items-center gap-2 rounded-2xl bg-white dark:bg-[#1a1e27] border border-slate-200 dark:border-white/10 px-3 py-2 shadow-sm">
+                <span className="text-sm text-slate-400">🔍</span>
+
+                <input
+                  className="flex-1 bg-transparent outline-none text-sm text-slate-700 dark:text-slate-100 placeholder:text-slate-400"
+                  placeholder="Search by name or email"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
                 />
-              ))
-            )}
 
-            {loadingChat && <p className="text-center">Loading...</p>}
+                <button
+                  onClick={handleSearch}
+                  className="rounded-xl bg-gradient-to-r from-orange-400 to-amber-500 px-3 py-1.5 text-xs font-medium text-white transition-all hover:scale-[1.02]"
+                >
+                  Search
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2 bg-[#f5f5f5] dark:bg-[#0f1117]">
+              {loading ? (
+                <ChatLoading />
+              ) : (
+                searchResult?.map((user) => (
+                  <div
+                    key={user._id}
+                    className="rounded-2xl bg-white/90 dark:bg-[#171b24] border border-slate-200/60 dark:border-white/5 p-1 shadow-sm transition-all hover:shadow-md hover:-translate-y-[1px]"
+                  >
+                    <UserListItem
+                      user={user}
+                      handleFunction={() => accessChat(user._id)}
+                    />
+                  </div>
+                ))
+              )}
+
+              {loadingChat && (
+                <p className="text-center text-sm text-slate-500 dark:text-slate-400 py-3 animate-pulse">
+                  Opening conversation...
+                </p>
+              )}
+            </div>
           </div>
 
-          <div className="flex-1 bg-black bg-opacity-40" onClick={onClose} />
+          <div
+            className="flex-1 bg-black/30 backdrop-blur-[2px]"
+            onClick={onClose}
+          />
         </div>
       )}
     </>

@@ -229,21 +229,19 @@ const ScrollableChat = ({
     <>
       {/* WhatsApp-style pinned messages */}
       {pinnedMessages.length > 0 && (
-        <div className="sticky top-0 z-30 bg-white border-b border-gray-200 px-4 py-2 shadow-sm flex flex-col gap-2">
+        <div className="sticky top-0 z-30 mb-3 flex flex-col gap-2 rounded-2xl border border-slate-200/70 dark:border-white/5 bg-white/80 dark:bg-[#151821]/80 px-3 py-3 backdrop-blur-xl shadow-sm">
           {pinnedMessages.map((msg) => (
             <button
               key={msg._id}
               onClick={() => scrollToPinnedMessage(msg._id)}
-              className="flex items-center gap-2 text-left hover:bg-gray-100 rounded-lg px-3 py-2 transition-colors"
+              className="flex items-center gap-3 rounded-xl px-3 py-2 text-left transition-all hover:bg-slate-100 dark:hover:bg-white/5"
             >
               <span className="text-sm">📌</span>
-
               <div className="flex flex-col overflow-hidden">
-                <span className="text-xs font-semibold text-gray-700">
+                <span className="text-[11px] font-semibold tracking-wide text-slate-700 dark:text-slate-200">
                   {msg.sender._id === user._id ? "You" : msg.sender.name}
                 </span>
-
-                <span className="text-xs text-gray-500 truncate max-w-[260px]">
+                <span className="max-w-[240px] truncate text-[11px] text-slate-500 dark:text-slate-400">
                   {msg.messageType === "voice" ||
                   msg.content.includes("/video/upload/")
                     ? "Voice Message"
@@ -258,7 +256,7 @@ const ScrollableChat = ({
           ))}
         </div>
       )}
-      <div className="px-4 py-3 flex flex-col">
+      <div className="flex flex-col px-1 py-1">
         {messages &&
           messages
             .filter(
@@ -271,9 +269,13 @@ const ScrollableChat = ({
                 ref={(el) => {
                   messageRefs.current[m._id] = el;
                 }}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  setMessageMenu(messageMenu === m._id ? null : m._id);
+                }}
                 onMouseEnter={() => setHoveredMessage(m._id)}
                 onMouseLeave={() => setHoveredMessage(null)}
-                className={`flex items-end gap-2 relative ${
+                className={`group relative flex items-end gap-2 mb-[5px] ${
                   m.sender._id === user._id ? "justify-end" : "justify-start"
                 }`}
               >
@@ -293,134 +295,121 @@ const ScrollableChat = ({
                           "https://ui-avatars.com/api/?name=" +
                           encodeURIComponent(m.sender.name);
                       }}
-                      className="h-10 w-10 rounded-full object-cover shadow-md border border-white"
+                      className="h-9 w-9 rounded-2xl object-cover border border-white/40 dark:border-white/10 shadow-sm"
                     />
                   )}
                 <div
-                  className={`px-4 py-2 rounded-2xl max-w-[65%] break-words text-sm shadow-md transition-all duration-200 relative ${
+                  className={`relative max-w-[78%] break-words rounded-[22px] px-4 py-2.5 text-sm shadow-sm transition-all duration-200 ${
+                    m.reactions && m.reactions.length > 0 ? "mb-8" : "mb-1"
+                  } ${
                     m.sender._id === user._id
-                      ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-br-none"
-                      : "bg-white text-gray-800 rounded-bl-none border border-gray-200"
-                  } ${isSameUser(messages, m, i, user._id) ? "mt-1" : "mt-3"}`}
+                      ? "bg-[#f6e7cf]/45 dark:bg-[#2c241d]/30 text-slate-800 dark:text-[#fcefd8] rounded-br-md border border-[#f3dcc0]/50 dark:border-[#fcefd8]/10 shadow-[0_8px_32px_rgba(201,168,120,0.10)] backdrop-blur-2xl"
+                      : "bg-white dark:bg-[#171b24] text-slate-800 dark:text-slate-100 rounded-bl-md border border-slate-200/70 dark:border-white/5"
+                  } ${isSameUser(messages, m, i, user._id) ? "mt-1" : "mt-4"}`}
                   style={{
                     marginLeft: isSameSenderMargin(messages, m, i, user._id),
                   }}
                 >
-                  {/* Message menu */}
-                  {hoveredMessage === m._id && !m.deleted && (
+                  {/* Context menu */}
+                  {messageMenu === m._id && !m.deleted && (
                     <div
                       ref={menuRef}
-                      className={`absolute top-2 ${
-                        m.sender._id === user._id ? "-left-12" : "-right-12"
+                      className={`absolute z-50 min-w-[200px] overflow-hidden rounded-2xl border border-slate-200/70 dark:border-white/5 bg-white/95 dark:bg-[#171b24]/95 shadow-2xl backdrop-blur-2xl ${
+                        m.sender._id === user._id
+                          ? "right-full top-2 mr-3"
+                          : "left-full top-2 ml-3"
                       }`}
                     >
-                      <button
-                        onClick={() =>
-                          setMessageMenu(messageMenu === m._id ? null : m._id)
-                        }
-                        className="bg-white border border-gray-200 rounded-full shadow-md px-2 py-1 text-xs hover:bg-gray-100"
-                      >
-                        ⋮
-                      </button>
-
-                      {messageMenu === m._id && (
-                        <div className="absolute mt-2 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden z-40 min-w-[160px]">
-                          {selectedChat?.isGroupChat &&
-                            m.sender._id === user._id && (
-                              <button
-                                onClick={() => {
-                                  setSeenByModal(m);
-                                  setMessageMenu(null);
-                                }}
-                                className="w-full text-left px-4 py-2 hover:bg-blue-50 text-sm"
-                              >
-                                Message Info
-                              </button>
-                            )}
-                          {m.sender._id === user._id && (
-                            <button
-                              onClick={() => {
-                                setEditingMessage(m._id);
-                                setEditText(m.content);
-                                setMessageMenu(null);
-                              }}
-                              className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm"
-                            >
-                              Edit
-                            </button>
-                          )}
-
+                      {selectedChat?.isGroupChat &&
+                        m.sender._id === user._id && (
                           <button
                             onClick={() => {
-                              setReplyMessage(m);
+                              setSeenByModal(m);
                               setMessageMenu(null);
                             }}
-                            className="w-full text-left px-4 py-2 hover:bg-blue-50 text-sm"
+                            className="w-full px-4 py-3 text-left text-sm transition-all hover:bg-slate-100 dark:hover:bg-white/5"
                           >
-                            Reply
+                            Message Info
                           </button>
-                          <button
-                            onClick={() =>
-                              setPinMenu(pinMenu === m._id ? null : m._id)
-                            }
-                            className="w-full text-left px-4 py-2 hover:bg-yellow-50 text-sm"
-                          >
-                            {m.pinned ? "Unpin Message" : "Pin Message"}
-                          </button>
+                        )}
 
-                          {pinMenu === m._id && (
-                            <div className="border-t border-gray-200 bg-gray-50">
-                              {m.pinned ? (
-                                <button
-                                  onClick={() =>
-                                    handlePinMessage(m._id, "1day")
-                                  }
-                                  className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm"
-                                >
-                                  Remove Pin
-                                </button>
-                              ) : (
-                                <>
-                                  <button
-                                    onClick={() =>
-                                      handlePinMessage(m._id, "1day")
-                                    }
-                                    className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm"
-                                  >
-                                    Pin for 1 Day
-                                  </button>
+                      {m.sender._id === user._id && (
+                        <button
+                          onClick={() => {
+                            setEditingMessage(m._id);
+                            setEditText(m.content);
+                            setMessageMenu(null);
+                          }}
+                          className="w-full px-4 py-3 text-left text-sm transition-all hover:bg-slate-100 dark:hover:bg-white/5"
+                        >
+                          Edit Message
+                        </button>
+                      )}
 
-                                  <button
-                                    onClick={() =>
-                                      handlePinMessage(m._id, "1week")
-                                    }
-                                    className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm"
-                                  >
-                                    Pin for 1 Week
-                                  </button>
+                      <button
+                        onClick={() => {
+                          setReplyMessage(m);
+                          setMessageMenu(null);
+                        }}
+                        className="w-full px-4 py-3 text-left text-sm text-orange-500 transition-all hover:bg-orange-50 dark:hover:bg-orange-500/10"
+                      >
+                        Reply
+                      </button>
 
-                                  <button
-                                    onClick={() =>
-                                      handlePinMessage(m._id, "1month")
-                                    }
-                                    className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm"
-                                  >
-                                    Pin for 1 Month
-                                  </button>
-                                </>
-                              )}
-                            </div>
-                          )}
+                      <button
+                        onClick={() =>
+                          setPinMenu(pinMenu === m._id ? null : m._id)
+                        }
+                        className="w-full px-4 py-3 text-left text-sm text-amber-500 transition-all hover:bg-amber-50 dark:hover:bg-amber-500/10"
+                      >
+                        {m.pinned ? "Unpin Message" : "Pin Message"}
+                      </button>
 
-                          {m.sender._id === user._id && (
+                      {pinMenu === m._id && (
+                        <div className="border-t border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-[#10131a]">
+                          {m.pinned ? (
                             <button
-                              onClick={() => handleDeleteMessage(m._id)}
-                              className="w-full text-left px-4 py-2 hover:bg-red-50 text-red-500 text-sm"
+                              onClick={() => handlePinMessage(m._id, "1day")}
+                              className="w-full px-4 py-3 text-left text-sm transition-all hover:bg-slate-100 dark:hover:bg-white/5"
                             >
-                              Delete
+                              Remove Pin
                             </button>
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => handlePinMessage(m._id, "1day")}
+                                className="w-full px-4 py-3 text-left text-sm transition-all hover:bg-slate-100 dark:hover:bg-white/5"
+                              >
+                                Pin for 1 Day
+                              </button>
+
+                              <button
+                                onClick={() => handlePinMessage(m._id, "1week")}
+                                className="w-full px-4 py-3 text-left text-sm transition-all hover:bg-slate-100 dark:hover:bg-white/5"
+                              >
+                                Pin for 1 Week
+                              </button>
+
+                              <button
+                                onClick={() =>
+                                  handlePinMessage(m._id, "1month")
+                                }
+                                className="w-full px-4 py-3 text-left text-sm transition-all hover:bg-slate-100 dark:hover:bg-white/5"
+                              >
+                                Pin for 1 Month
+                              </button>
+                            </>
                           )}
                         </div>
+                      )}
+
+                      {m.sender._id === user._id && (
+                        <button
+                          onClick={() => handleDeleteMessage(m._id)}
+                          className="w-full px-4 py-3 text-left text-sm text-rose-500 transition-all hover:bg-rose-50 dark:hover:bg-rose-500/10"
+                        >
+                          Delete Message
+                        </button>
                       )}
                     </div>
                   )}
@@ -429,13 +418,13 @@ const ScrollableChat = ({
                   {m.replyTo && (
                     <button
                       onClick={() => scrollToPinnedMessage(m.replyTo._id)}
-                      className={`mb-2 px-3 py-2 rounded-lg border-l-4 text-xs overflow-hidden w-full text-left transition-all hover:opacity-80 ${
+                      className={`mb-2 w-full overflow-hidden rounded-xl border-l-[3px] px-3 py-2 text-left text-[11px] transition-all hover:opacity-90 ${
                         m.sender._id === user._id
-                          ? "bg-white/20 border-white/70"
-                          : "bg-gray-100 border-blue-400"
+                          ? "bg-[#f6e7cf]/25 dark:bg-[#3a2d22]/20 border-[#f3dcc0]/45 dark:border-[#fcefd8]/10 backdrop-blur-xl"
+                          : "bg-slate-100 dark:bg-white/5 border-orange-400"
                       }`}
                     >
-                      <div className="font-semibold mb-1">
+                      <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide">
                         {m.replyTo.sender?._id === user._id
                           ? "You"
                           : m.replyTo.sender?.name || "Unknown"}
@@ -460,23 +449,21 @@ const ScrollableChat = ({
                       <input
                         value={editText}
                         onChange={(e) => setEditText(e.target.value)}
-                        className="px-3 py-2 rounded-lg border border-gray-300 text-black text-sm"
+                        className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#1a1e27] px-3 py-2 text-sm text-slate-700 dark:text-slate-100 outline-none"
                       />
-
                       <div className="flex justify-end gap-2">
                         <button
                           onClick={() => {
                             setEditingMessage(null);
                             setEditText("");
                           }}
-                          className="text-xs px-3 py-1 rounded bg-gray-200 text-black"
+                          className="rounded-lg bg-slate-200 dark:bg-white/10 px-3 py-1.5 text-xs text-slate-700 dark:text-slate-200"
                         >
                           Cancel
                         </button>
-
                         <button
                           onClick={() => handleEditMessage(m._id)}
-                          className="text-xs px-3 py-1 rounded bg-blue-500 text-white"
+                          className="rounded-lg bg-orange-500 px-3 py-1.5 text-xs text-white"
                         >
                           Save
                         </button>
@@ -490,22 +477,19 @@ const ScrollableChat = ({
                       onClick={(e) => {
                         e.stopPropagation();
                       }}
-                      className="flex items-center gap-3 bg-black/10 hover:bg-black/20 transition-colors rounded-xl px-4 py-3 min-w-[240px] text-left"
+                      className="flex min-w-[240px] items-center gap-3 rounded-2xl border border-[#f3dcc0]/50 dark:border-[#fcefd8]/10 bg-[#f6e7cf]/28 dark:bg-[#3a2d22]/20 px-4 py-3 text-left shadow-[0_4px_20px_rgba(201,168,120,0.08)] backdrop-blur-2xl transition-all hover:bg-[#f6e7cf]/40 dark:hover:bg-[#3a2d22]/30"
                     >
                       <div className="text-3xl">📄</div>
-
                       <div className="flex flex-col overflow-hidden">
                         <span className="font-medium truncate max-w-[180px]">
                           {m.fileName || "Document"}
                         </span>
-
                         <span className="text-xs opacity-70">
                           {m.fileSize
                             ? `${(m.fileSize / 1024 / 1024).toFixed(2)} MB`
                             : "File"}
                         </span>
                       </div>
-
                       <div className="ml-auto text-xs font-medium opacity-70">
                         Open
                       </div>
@@ -516,7 +500,6 @@ const ScrollableChat = ({
                         <span>🎙️</span>
                         <span>Voice Message</span>
                       </div>
-
                       <audio controls className="w-full max-w-[240px] h-10">
                         <source src={m.content} type="audio/webm" />
                         Your browser does not support audio.
@@ -527,39 +510,73 @@ const ScrollableChat = ({
                       src={m.content}
                       alt="sent"
                       onClick={() => setSelectedImage(m.content)}
-                      className="max-w-[200px] rounded-lg mb-1 cursor-pointer hover:opacity-90"
+                      className="mb-1 max-w-[220px] rounded-2xl border border-white/10 cursor-pointer transition-all hover:opacity-95"
                     />
                   ) : (
-                    <p
-                      className={`leading-relaxed tracking-wide ${
-                        m.deleted ? "italic opacity-70" : ""
-                      }`}
-                    >
-                      {messageSearch
-                        ? m.content
-                            .split(new RegExp(`(${messageSearch})`, "gi"))
-                            .map((part, i) =>
-                              part.toLowerCase() ===
-                              messageSearch.toLowerCase() ? (
-                                <span
-                                  key={i}
-                                  className="bg-yellow-300 text-black rounded px-1"
-                                >
-                                  {part}
-                                </span>
-                              ) : (
-                                part
-                              ),
-                            )
-                        : m.content}
-                    </p>
+                    <div className="flex items-end gap-2">
+                      <p
+                        className={`leading-6 tracking-[0.01em] ${
+                          m.deleted ? "italic opacity-70" : ""
+                        }`}
+                      >
+                        {messageSearch
+                          ? m.content
+                              .split(new RegExp(`(${messageSearch})`, "gi"))
+                              .map((part, i) =>
+                                part.toLowerCase() ===
+                                messageSearch.toLowerCase() ? (
+                                  <span
+                                    key={i}
+                                    className="bg-yellow-300 text-black rounded px-1"
+                                  >
+                                    {part}
+                                  </span>
+                                ) : (
+                                  part
+                                ),
+                              )
+                          : m.content}
+                      </p>
+
+                      <div className="flex items-center gap-1 self-end pb-[2px] whitespace-nowrap">
+                        <span className="text-[10px] font-medium opacity-70">
+                          {new Date(m.createdAt).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                          {m.edited && !m.deleted && " • edited"}
+                        </span>
+
+                        {m.sender._id === user._id &&
+                          (() => {
+                            const isGroupChat = selectedChat?.isGroupChat;
+
+                            const showDoubleTick = isGroupChat
+                              ? Boolean(m.allSeen)
+                              : Boolean(m.seen);
+
+                            return (
+                              <span
+                                key={`${m._id}-${m.seen}-${m.allSeen}`}
+                                className={`text-[10px] font-semibold transition-all duration-150 ${
+                                  showDoubleTick
+                                    ? "text-[#b69263]/75 dark:text-[#f4dec2]/70"
+                                    : "text-slate-400/70"
+                                }`}
+                              >
+                                {showDoubleTick ? "✓✓" : "✓"}
+                              </span>
+                            );
+                          })()}
+                      </div>
+                    </div>
                   )}
                   {m.isScheduled && !m.scheduledSent && (
                     <div
-                      className={`mb-2 inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-semibold ${
+                      className={`mb-2 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold ${
                         m.sender._id === user._id
-                          ? "bg-yellow-400/20 text-yellow-100"
-                          : "bg-yellow-100 text-yellow-700"
+                          ? "bg-orange-200/40 dark:bg-orange-300/10 text-orange-700 dark:text-orange-200"
+                          : "bg-amber-100 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300"
                       }`}
                     >
                       <span>⏰</span>
@@ -574,66 +591,77 @@ const ScrollableChat = ({
                       </span>
                     </div>
                   )}
-                  <div className="flex items-center justify-end gap-1 mt-1">
-                    <span className="text-[10px] opacity-70 font-medium">
-                      {new Date(m.createdAt).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                      {m.edited && !m.deleted && " • edited"}
-                    </span>
-                    {m.sender._id === user._id &&
-                      (() => {
-                        const isGroupChat = selectedChat?.isGroupChat;
+                  {(m.messageType === "file" ||
+                    m.content.includes("/video/upload/") ||
+                    m.content.startsWith("http")) && (
+                    <div className="mt-1.5 flex items-center justify-end gap-1">
+                      <span className="text-[10px] font-medium opacity-70">
+                        {new Date(m.createdAt).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                        {m.edited && !m.deleted && " • edited"}
+                      </span>
 
-                        // group chats -> double tick only when EVERYONE else has seen
-                        const showDoubleTick = isGroupChat
-                          ? Boolean(m.allSeen)
-                          : Boolean(m.seen);
+                      {m.sender._id === user._id &&
+                        (() => {
+                          const isGroupChat = selectedChat?.isGroupChat;
 
-                        return (
-                          <span
-                            key={`${m._id}-${m.seen}-${m.allSeen}`}
-                            className={`text-[10px] font-semibold transition-all duration-150 ${
-                              showDoubleTick ? "text-blue-200" : "text-gray-300"
-                            }`}
-                          >
-                            {showDoubleTick ? "✓✓" : "✓"}
-                          </span>
-                        );
-                      })()}
-                  </div>
+                          const showDoubleTick = isGroupChat
+                            ? Boolean(m.allSeen)
+                            : Boolean(m.seen);
+
+                          return (
+                            <span
+                              key={`${m._id}-${m.seen}-${m.allSeen}`}
+                              className={`text-[10px] font-semibold transition-all duration-150 ${
+                                showDoubleTick
+                                  ? "text-[#b69263]/75 dark:text-[#f4dec2]/70"
+                                  : "text-slate-400/70"
+                              }`}
+                            >
+                              {showDoubleTick ? "✓✓" : "✓"}
+                            </span>
+                          );
+                        })()}
+                    </div>
+                  )}
 
                   {/* Reactions */}
                   {m.reactions && m.reactions.length > 0 && (
-                    <div className="flex gap-1 mt-2 flex-wrap">
-                      {["👍", "❤️", "😂"].map((emoji) => null)}
+                    <div
+                      className={`absolute -bottom-6 flex items-center rounded-full border border-white/70 dark:border-white/10 bg-white/95 dark:bg-[#1b1f29]/95 px-2 py-[3px] shadow-lg backdrop-blur-xl ${
+                        m.sender._id === user._id ? "right-3" : "left-3"
+                      }`}
+                    >
                       {[...new Set(m.reactions.map((r) => r.emoji))].map(
-                        (emoji) => (
-                          <button
-                            key={emoji}
-                            onClick={() =>
-                              setReactionDetails(
-                                reactionDetails === m._id + emoji
-                                  ? null
-                                  : m._id + emoji,
-                              )
-                            }
-                            className="px-2 py-0.5 bg-gray-200 hover:bg-gray-300 rounded-full text-xs flex items-center gap-1 transition-colors"
-                          >
-                            <span>{emoji}</span>
+                        (emoji) => {
+                          const count = m.reactions.filter(
+                            (r) => r.emoji === emoji,
+                          ).length;
 
-                            {m.reactions.filter((r) => r.emoji === emoji)
-                              .length > 1 && (
-                              <span>
-                                {
-                                  m.reactions.filter((r) => r.emoji === emoji)
-                                    .length
-                                }
-                              </span>
-                            )}
-                          </button>
-                        ),
+                          return (
+                            <button
+                              key={emoji}
+                              onClick={() =>
+                                setReactionDetails(
+                                  reactionDetails === m._id + emoji
+                                    ? null
+                                    : m._id + emoji,
+                                )
+                              }
+                              className="flex items-center gap-1 px-1 text-[15px] transition-all hover:scale-110"
+                            >
+                              <span>{emoji}</span>
+
+                              {count > 1 && (
+                                <span className="text-[11px] font-medium text-slate-500 dark:text-slate-300">
+                                  {count}
+                                </span>
+                              )}
+                            </button>
+                          );
+                        },
                       )}
                     </div>
                   )}
@@ -645,12 +673,11 @@ const ScrollableChat = ({
                         reactionDetails === m._id + emoji && (
                           <div
                             key={emoji + "details"}
-                            className="absolute z-30 mt-2 bg-white border border-gray-200 shadow-xl rounded-xl p-3 min-w-[220px] text-gray-800"
+                            className="absolute z-30 mt-2 min-w-[220px] rounded-2xl border border-slate-200/70 dark:border-white/5 bg-white/95 dark:bg-[#171b24]/95 p-3 text-slate-800 dark:text-slate-100 shadow-xl backdrop-blur-xl"
                           >
-                            <div className="font-semibold text-sm mb-2 border-b pb-1">
+                            <div className="mb-2 border-b border-slate-200 dark:border-white/5 pb-2 text-sm font-semibold">
                               All Reactions
                             </div>
-
                             <div className="flex flex-col gap-2 max-h-48 overflow-y-auto">
                               {[
                                 ...new Map(
@@ -671,41 +698,19 @@ const ScrollableChat = ({
                                         ? a.user?._id
                                         : a.user,
                                     ) === String(user._id);
-
                                   const bIsCurrentUser =
                                     String(
                                       typeof b.user === "object"
                                         ? b.user?._id
                                         : b.user,
                                     ) === String(user._id);
-
                                   if (aIsCurrentUser && !bIsCurrentUser)
                                     return -1;
                                   if (!aIsCurrentUser && bIsCurrentUser)
                                     return 1;
-
                                   return 0;
                                 })
                                 .map((reaction) => {
-                                  console.log("[REACTION POPUP DEBUG]", {
-                                    messageId: m._id,
-                                    emoji,
-                                    rawReactions: m.reactions,
-                                    reaction,
-                                    currentUserId: user._id,
-                                    reactionUserType: typeof reaction.user,
-                                    reactionUserObject:
-                                      typeof reaction.user === "object"
-                                        ? reaction.user
-                                        : null,
-                                    comparisonResult:
-                                      String(
-                                        typeof reaction.user === "object"
-                                          ? reaction.user?._id
-                                          : reaction.user,
-                                      ) === String(user._id),
-                                  });
-
                                   return (
                                     <div
                                       key={
@@ -717,7 +722,6 @@ const ScrollableChat = ({
                                     >
                                       <div className="flex items-center gap-2">
                                         <span>{reaction.emoji}</span>
-
                                         <span>
                                           {String(
                                             typeof reaction.user === "object"
@@ -730,7 +734,6 @@ const ScrollableChat = ({
                                               : "Unknown User"}
                                         </span>
                                       </div>
-
                                       {String(
                                         typeof reaction.user === "object"
                                           ? reaction.user?._id
@@ -744,7 +747,7 @@ const ScrollableChat = ({
                                             );
                                             setReactionDetails(null);
                                           }}
-                                          className="text-red-500 hover:text-red-700 text-xs font-medium"
+                                          className="text-xs font-medium text-rose-500 transition-all hover:opacity-80"
                                         >
                                           Remove
                                         </button>
@@ -765,8 +768,8 @@ const ScrollableChat = ({
                           reactionPicker === m._id ? null : m._id,
                         )
                       }
-                      className={`absolute top-1/2 -translate-y-1/2 bg-white border border-gray-200 rounded-full shadow-md px-2 py-1 text-xs hover:bg-gray-100 transition-all ${
-                        m.sender._id === user._id ? "-left-10" : "-right-10"
+                      className={`absolute top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/50 dark:border-white/10 bg-white/85 dark:bg-[#171b24]/92 text-sm shadow-lg backdrop-blur-xl transition-all duration-200 hover:scale-105 ${
+                        m.sender._id === user._id ? "-left-11" : "-right-11"
                       }`}
                     >
                       😊
@@ -776,22 +779,30 @@ const ScrollableChat = ({
                   {/* Emoji picker */}
                   {reactionPicker === m._id && (
                     <div
-                      className={`absolute top-1/2 -translate-y-1/2 flex gap-2 px-3 py-1 bg-white border border-gray-200 rounded-full shadow-lg text-sm z-20 ${
-                        m.sender._id === user._id ? "-left-44" : "-right-44"
+                      className={`absolute top-1/2 z-30 flex -translate-y-1/2 items-center gap-1 rounded-full border border-white/50 dark:border-white/10 bg-white/92 dark:bg-[#171b24]/96 px-2 py-1 shadow-2xl backdrop-blur-2xl transition-all duration-200 ease-out animate-in fade-in zoom-in-95 ${
+                        m.sender._id === user._id
+                          ? "right-[calc(100%+52px)]"
+                          : "left-[calc(100%+52px)]"
                       }`}
                     >
-                      {["👍", "❤️", "😂"].map((emoji) => (
-                        <button
-                          key={emoji}
-                          onClick={() => {
-                            reactToMessage(m._id, emoji);
-                            setReactionPicker(null);
-                          }}
-                          className="hover:scale-125 transition-transform"
-                        >
-                          {emoji}
-                        </button>
-                      ))}
+                      {["👍", "❤️", "😂", "😮", "😢", "🙏", "👏"].map(
+                        (emoji) => (
+                          <button
+                            key={emoji}
+                            onClick={() => {
+                              reactToMessage(m._id, emoji);
+                              setReactionPicker(null);
+                            }}
+                            className="flex h-7 w-7 items-center justify-center rounded-full text-[18px] transition-all duration-150 hover:scale-125 hover:bg-black/5 dark:hover:bg-white/5"
+                          >
+                            {emoji}
+                          </button>
+                        ),
+                      )}
+
+                      <button className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-500/75 text-[18px] font-light leading-none text-white transition-all hover:scale-105">
+                        +
+                      </button>
                     </div>
                   )}
                 </div>
@@ -799,32 +810,29 @@ const ScrollableChat = ({
             ))}
       </div>
       {seenByModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-2xl w-[90%] max-w-md overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+          <div className="w-full max-w-md overflow-hidden rounded-[28px] border border-slate-200/70 dark:border-white/5 bg-white dark:bg-[#171b24] shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/5 px-5 py-4">
               <div>
-                <h2 className="text-lg font-semibold text-gray-800">
+                <h2 className="text-lg font-semibold tracking-tight text-slate-800 dark:text-white">
                   Message Info
                 </h2>
-                <p className="text-sm text-gray-500 mt-1">
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                   Seen by {seenByModal.seenBy?.length || 0} users
                 </p>
               </div>
-
               <button
                 onClick={() => setSeenByModal(null)}
-                className="text-gray-500 hover:text-gray-700 text-xl"
+                className="flex h-9 w-9 items-center justify-center rounded-xl text-xl text-slate-500 transition-all hover:bg-slate-100 dark:hover:bg-white/5"
               >
                 ×
               </button>
             </div>
-
-            <div className="max-h-[400px] overflow-y-auto px-4 py-3 flex flex-col gap-3">
+            <div className="flex max-h-[400px] flex-col gap-3 overflow-y-auto px-4 py-4">
               {seenByModal.seenBy &&
               seenByModal.seenBy.filter((seenUser) => {
                 const seenUserId =
                   typeof seenUser === "object" ? seenUser?._id : seenUser;
-
                 // do not show sender in seen list
                 return String(seenUserId) !== String(seenByModal.sender?._id);
               }).length > 0 ? (
@@ -832,7 +840,6 @@ const ScrollableChat = ({
                   .filter((seenUser) => {
                     const seenUserId =
                       typeof seenUser === "object" ? seenUser?._id : seenUser;
-
                     return (
                       String(seenUserId) !== String(seenByModal.sender?._id)
                     );
@@ -840,25 +847,22 @@ const ScrollableChat = ({
                   .map((seenUser) => {
                     const seenUserId =
                       typeof seenUser === "object" ? seenUser?._id : seenUser;
-
                     const seenUserName =
                       typeof seenUser === "object" && seenUser?.name
                         ? seenUser.name
                         : selectedChat?.users?.find(
                             (u) => String(u._id) === String(seenUserId),
                           )?.name || "Unknown User";
-
                     const seenUserPic =
                       typeof seenUser === "object" && seenUser?.pic
                         ? seenUser.pic
                         : selectedChat?.users?.find(
                             (u) => String(u._id) === String(seenUserId),
                           )?.pic || null;
-
                     return (
                       <div
                         key={seenUserId}
-                        className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-gray-50"
+                        className="flex items-center gap-3 rounded-2xl border border-slate-200/70 dark:border-white/5 px-3 py-3 transition-all hover:bg-slate-50 dark:hover:bg-white/5"
                       >
                         <img
                           src={
@@ -867,25 +871,22 @@ const ScrollableChat = ({
                               encodeURIComponent(seenUserName)
                           }
                           alt={seenUserName}
-                          className="w-10 h-10 rounded-full object-cover"
+                          className="h-10 w-10 rounded-2xl object-cover"
                         />
-
                         <div className="flex-1">
-                          <div className="font-medium text-gray-800">
+                          <div className="font-medium text-slate-800 dark:text-slate-100">
                             {seenUserId === user._id ? "You" : seenUserName}
                           </div>
-
                           <div className="text-xs text-green-600 font-medium">
                             Seen
                           </div>
                         </div>
-
                         <div className="text-green-500 text-lg">✓✓</div>
                       </div>
                     );
                   })
               ) : (
-                <div className="text-center text-gray-500 py-10">
+                <div className="py-10 text-center text-sm text-slate-500 dark:text-slate-400">
                   Nobody has seen this message yet.
                 </div>
               )}
@@ -896,13 +897,13 @@ const ScrollableChat = ({
 
       {selectedImage && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm px-4"
           onClick={() => setSelectedImage(null)}
         >
           <img
             src={selectedImage}
             alt="preview"
-            className="max-h-[90%] max-w-[90%] rounded-lg shadow-lg"
+            className="max-h-[90%] max-w-[92%] rounded-[24px] shadow-2xl"
           />
         </div>
       )}
