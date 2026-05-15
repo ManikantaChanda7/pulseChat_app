@@ -18,6 +18,24 @@ const chatModel = mongoose.Schema(
         ref: "User",
       },
     ],
+    readOverrides: [
+      {
+        user: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
+        forceUnread: {
+          type: Boolean,
+          default: false,
+        },
+      },
+    ],
+    archivedBy: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
   },
   { timestamps: true }
 );

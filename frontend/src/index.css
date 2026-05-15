@@ -105,10 +105,6 @@ code {
     @apply overflow-hidden text-ellipsis whitespace-nowrap;
   }
 
-  .line-clamp-2 {
-    @apply line-clamp-2;
-  }
-
   /* Animations */
   .animate-in {
     @apply animate-slide-in;

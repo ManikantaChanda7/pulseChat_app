@@ -52,6 +52,7 @@ const registerUser = asyncHandler(async (req, res) => {
       isAdmin: user.isAdmin,
       pic: user.pic,
       lastSeen: user.lastSeen,
+      privacy: user.privacy,
       token: generateToken(user._id),
     });
   } else {
@@ -76,6 +77,7 @@ const authUser = asyncHandler(async (req, res) => {
       isAdmin: user.isAdmin,
       pic: user.pic,
       lastSeen: user.lastSeen,
+      privacy: user.privacy,
       token: generateToken(user._id),
     });
   } else {
@@ -84,4 +86,38 @@ const authUser = asyncHandler(async (req, res) => {
   }
 });
 
-module.exports = { allUsers, registerUser, authUser };
+const updatePrivacySettings = asyncHandler(async (req, res) => {
+  const { readReceipts, showLastSeen } = req.body;
+
+  const user = await User.findById(req.user._id);
+
+  if (!user) {
+    res.status(404);
+    throw new Error("User not found");
+  }
+
+  if (!user.privacy) {
+    user.privacy = {};
+  }
+
+  if (typeof readReceipts === "boolean") {
+    user.privacy.readReceipts = readReceipts;
+  }
+
+  if (typeof showLastSeen === "boolean") {
+    user.privacy.showLastSeen = showLastSeen;
+  }
+
+  await user.save();
+
+  res.json({
+    privacy: user.privacy,
+  });
+});
+
+module.exports = {
+  allUsers,
+  registerUser,
+  authUser,
+  updatePrivacySettings,
+};

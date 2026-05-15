@@ -6,7 +6,7 @@ const messageSchema = mongoose.Schema(
     content: { type: String, trim: true },
     messageType: {
       type: String,
-      enum: ["text", "image", "voice", "file"],
+      enum: ["text", "image", "voice", "file", "poll"],
       default: "text",
     },
 
@@ -46,6 +46,19 @@ const messageSchema = mongoose.Schema(
       default: false,
     },
 
+    readOverrides: [
+      {
+        user: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
+        forceUnread: {
+          type: Boolean,
+          default: false,
+        },
+      },
+    ],
+
     reactions: [
       {
         user: {
@@ -64,10 +77,62 @@ const messageSchema = mongoose.Schema(
       default: false,
     },
 
+    editedAt: {
+      type: Date,
+    },
+
+    forwarded: {
+      type: Boolean,
+      default: false,
+    },
+
+    forwardedFrom: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Message",
+    },
+
+    poll: {
+      question: {
+        type: String,
+      },
+
+      allowMultiple: {
+        type: Boolean,
+        default: false,
+      },
+
+      expiresAt: {
+        type: Date,
+      },
+
+      options: [
+        {
+          text: {
+            type: String,
+          },
+
+          voters: [
+            {
+              type: mongoose.Schema.Types.ObjectId,
+              ref: "User",
+            },
+          ],
+        },
+      ],
+    },
+
     deleted: {
       type: Boolean,
       default: false,
     },
+
+    deletedFor: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        default: [],
+      },
+    ],
 
     deletedAt: {
       type: Date,
@@ -94,6 +159,20 @@ const messageSchema = mongoose.Schema(
       ref: "Message",
     },
 
+    mentions: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+
+    starredBy: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+
     // Scheduled message support
     isScheduled: {
       type: Boolean,
@@ -109,7 +188,7 @@ const messageSchema = mongoose.Schema(
       default: false,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 const Message = mongoose.model("Message", messageSchema);

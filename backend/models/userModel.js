@@ -9,7 +9,7 @@ const userSchema = mongoose.Schema(
     pic: {
       type: "String",
       default:
-        "https://icon-library.com/images/anonymous-avatar-icon/anonymous-avatar-icon-25.jpg",
+        "https://png.pngtree.com/png-clipart/20230927/original/pngtree-man-avatar-image-for-profile-png-image_13001882.png",
     },
     isAdmin: {
       type: Boolean,
@@ -20,8 +20,19 @@ const userSchema = mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+
+    privacy: {
+      readReceipts: {
+        type: Boolean,
+        default: true,
+      },
+      showLastSeen: {
+        type: Boolean,
+        default: true,
+      },
+    },
   },
-  { timestaps: true }
+  { timestaps: true },
 );
 
 userSchema.methods.matchPassword = async function (enteredPassword) {

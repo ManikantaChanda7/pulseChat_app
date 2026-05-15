@@ -10,6 +10,8 @@ const cors = require("cors");
 
 const Message = require("./models/messageModel");
 const User = require("./models/userModel");
+const Notification = require("./models/notificationModel");
+const notificationRoutes = require("./routes/notificationRoutes");
 
 dotenv.config({ path: require("path").join(__dirname, ".env") });
 connectDB();
@@ -28,6 +30,7 @@ app.use(express.json());
 app.use("/api/user", userRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/message", messageRoutes);
+app.use("/api/notification", notificationRoutes);
 
 const __dirname1 = path.resolve();
 
@@ -84,6 +87,7 @@ setInterval(async () => {
         },
       })
       .populate("reactions.user", "name pic email")
+      .populate("starredBy", "name pic email")
       .populate({
         path: "replyTo",
         populate: {
@@ -97,10 +101,59 @@ setInterval(async () => {
 
       message.scheduledSent = true;
       await message.save();
+      await Notification.create({
+        recipient: message.sender._id,
+        actor: message.sender._id,
+        chat: message.chat._id,
+        message: message._id,
+        type: "system",
+        preview: "Your scheduled message was delivered",
+      });
 
       const chat = message.chat;
 
       if (!chat?.users) continue;
+
+      const recipients = chat.users.filter(
+        (user) => user._id.toString() !== message.sender._id.toString(),
+      );
+
+      if (recipients.length > 0) {
+        const mentionedIds = (message.mentions || []).map((m) =>
+          m._id ? m._id.toString() : m.toString(),
+        );
+
+        const notifications = recipients.map((recipient) => {
+          let preview = message.content;
+
+          if (message.messageType === "image") preview = "shared an image";
+          if (message.messageType === "voice") preview = "sent a voice message";
+          if (message.messageType === "file") {
+            preview = message.fileName || "shared a file";
+          }
+
+          return {
+            recipient: recipient._id,
+            actor: message.sender._id,
+            chat: chat._id,
+            message: message._id,
+            type: mentionedIds.includes(recipient._id.toString())
+              ? "mention"
+              : "message",
+            preview,
+          };
+        });
+
+        const createdNotifications =
+          await Notification.insertMany(notifications);
+
+        createdNotifications.forEach((notification) => {
+          io.to(notification.recipient.toString()).emit(
+            "notification received",
+            notification,
+          );
+        });
+      }
 
       chat.users.forEach((user) => {
         // sender should only receive scheduled update
@@ -124,7 +177,7 @@ setInterval(async () => {
   } catch (error) {
     console.error("Scheduled message worker error", error);
   }
-}, 10000);
+}, 1000);
 
 io.on("connection", (socket) => {
   console.log("Connected to socket.io, socket id:", socket.id);
@@ -134,16 +187,32 @@ io.on("connection", (socket) => {
 
     onlineUsers.set(userData._id.toString(), socket.id);
 
-    // user came online
     User.findByIdAndUpdate(userData._id, {
       lastSeen: new Date(),
-    }).catch((err) =>
-      console.error("LAST SEEN ONLINE UPDATE ERROR", err),
-    );
+    })
+      .then(async () => {
+        const userDoc = await User.findById(userData._id).select("privacy");
 
-    socket.emit("online users", Array.from(onlineUsers.keys()));
+        const visibleOnlineUsers = [];
 
-    socket.broadcast.emit("user online", userData._id);
+        for (const onlineUserId of onlineUsers.keys()) {
+          const onlineUserDoc = await User.findById(onlineUserId).select(
+            "privacy",
+          );
+
+          if (onlineUserDoc?.privacy?.showLastSeen !== false) {
+            visibleOnlineUsers.push(onlineUserId);
+          }
+        }
+
+        if (userDoc?.privacy?.showLastSeen !== false) {
+          socket.emit("online users", visibleOnlineUsers);
+          socket.broadcast.emit("user online", userData._id);
+        } else {
+          socket.emit("online users", []);
+        }
+      })
+      .catch((err) => console.error("LAST SEEN ONLINE UPDATE ERROR", err));
 
     socket.emit("connected");
   });
@@ -153,7 +222,12 @@ io.on("connection", (socket) => {
     console.log(`[SOCKET JOIN] User joined room: ${room}`);
   });
 
-  socket.on("typing", (room) => socket.in(room).emit("typing"));
+  socket.on("typing", ({ room, userId, userName }) => {
+    socket.in(room).emit("typing", {
+      userId,
+      userName,
+    });
+  });
   socket.on("stop typing", (room) => socket.in(room).emit("stop typing"));
 
   socket.on("new message", (newMessageRecieved) => {
@@ -211,32 +285,57 @@ io.on("connection", (socket) => {
 
   socket.on("message seen", async ({ messageId, chatId, userId }) => {
     try {
-      console.log(
-        "[BACKEND MESSAGE SEEN RECEIVED]",
-        messageId,
-        chatId,
-        userId,
-      );
+      console.log("[BACKEND MESSAGE SEEN RECEIVED]", messageId, chatId, userId);
 
       let updatedMessage = await Message.findById(messageId)
-        .populate("sender", "name pic email")
+        .populate("sender", "name pic email privacy")
         .populate({
           path: "chat",
           populate: {
             path: "users",
-            select: "name pic email",
+            select: "name pic email privacy",
           },
         })
-        .populate("replyTo");
+        .populate("seenBy", "name pic email")
+        .populate("starredBy", "name pic email")
+        .populate({
+          path: "replyTo",
+          populate: {
+            path: "sender",
+            select: "name pic email",
+          },
+        });
 
       if (!updatedMessage) {
         console.log("[MESSAGE NOT FOUND FOR SEEN UPDATE]");
         return;
       }
 
+      const currentUserDoc = updatedMessage.chat.users.find(
+        (u) => u._id.toString() === userId,
+      );
+
+      const senderDoc = updatedMessage.chat.users.find(
+        (u) =>
+          u._id.toString() === updatedMessage.sender._id.toString(),
+      );
+
+      const readReceiptsAllowed =
+        currentUserDoc?.privacy?.readReceipts !== false &&
+        senderDoc?.privacy?.readReceipts !== false;
+
+      if (!readReceiptsAllowed) {
+        return;
+      }
+
       // prevent duplicate seen entries
+      if (!userId) {
+        console.log("[MESSAGE SEEN SKIPPED - NO USER ID]");
+        return;
+      }
+
       const alreadySeen = updatedMessage.seenBy?.some(
-        (id) => id.toString() === userId,
+        (id) => id?.toString() === userId,
       );
 
       if (!alreadySeen) {
@@ -248,15 +347,11 @@ io.on("connection", (socket) => {
 
       // allSeen means every OTHER member has seen message
       const otherUsers = updatedMessage.chat.users.filter(
-        (u) =>
-          u._id.toString() !==
-          updatedMessage.sender._id.toString(),
+        (u) => u._id.toString() !== updatedMessage.sender._id.toString(),
       );
 
       const allSeen = otherUsers.every((u) =>
-        updatedMessage.seenBy.some(
-          (id) => id.toString() === u._id.toString(),
-        ),
+        updatedMessage.seenBy.some((id) => id?.toString() === u._id.toString()),
       );
 
       updatedMessage.allSeen = allSeen;
@@ -264,16 +359,23 @@ io.on("connection", (socket) => {
       await updatedMessage.save();
 
       updatedMessage = await Message.findById(messageId)
-        .populate("sender", "name pic email")
+        .populate("sender", "name pic email privacy")
         .populate({
           path: "chat",
           populate: {
             path: "users",
-            select: "name pic email",
+            select: "name pic email privacy",
           },
         })
         .populate("seenBy", "name pic email")
-        .populate("replyTo");
+        .populate("starredBy", "name pic email")
+        .populate({
+          path: "replyTo",
+          populate: {
+            path: "sender",
+            select: "name pic email",
+          },
+        });
 
       updatedMessage.chat.users.forEach((user) => {
         io.to(user._id.toString()).emit("messages seen", {
@@ -316,16 +418,16 @@ io.on("connection", (socket) => {
             lastSeen,
           });
 
-          io.emit("user offline", {
-            userId,
-            lastSeen,
-          });
+          const userDoc = await User.findById(userId).select("privacy");
 
-          console.log(
-            "[USER OFFLINE LAST SEEN UPDATED]",
-            userId,
-            lastSeen,
-          );
+          if (userDoc?.privacy?.showLastSeen !== false) {
+            io.emit("user offline", {
+              userId,
+              lastSeen,
+            });
+          }
+
+          console.log("[USER OFFLINE LAST SEEN UPDATED]", userId, lastSeen);
         } catch (error) {
           console.error("LAST SEEN UPDATE ERROR", error);
         }

@@ -96,38 +96,44 @@ const Signup = () => {
   };
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-5">
       <div>
-        <label className="block mb-1 text-sm font-medium">Name</label>
+        <label className="block mb-2 text-[13px] font-semibold text-[#2d3142]">
+          Full Name
+        </label>
         <input
-          className="w-full p-2 border rounded"
-          placeholder="Enter Your Name"
+          className="w-full h-[56px] px-5 rounded-[18px] bg-[#f8f9fd] border border-[#e9edf7] outline-none text-[#2d3142] placeholder:text-[#8b93a7] focus:border-[#2453c4] transition-colors"
+          placeholder="Enter your full name"
           onChange={(e) => setName(e.target.value)}
         />
       </div>
 
       <div>
-        <label className="block mb-1 text-sm font-medium">Email Address</label>
+        <label className="block mb-2 text-[13px] font-semibold text-[#2d3142]">
+          Email Address
+        </label>
         <input
-          className="w-full p-2 border rounded"
+          className="w-full h-[56px] px-5 rounded-[18px] bg-[#f8f9fd] border border-[#e9edf7] outline-none text-[#2d3142] placeholder:text-[#8b93a7] focus:border-[#2453c4] transition-colors"
           type="email"
-          placeholder="Enter Your Email Address"
+          placeholder="Enter your email address"
           onChange={(e) => setEmail(e.target.value)}
         />
       </div>
 
       <div>
-        <label className="block mb-1 text-sm font-medium">Password</label>
-        <div className="flex">
+        <label className="block mb-2 text-[13px] font-semibold text-[#2d3142]">
+          Password
+        </label>
+        <div className="relative">
           <input
-            className="w-full p-2 border rounded-l"
+            className="w-full h-[56px] px-5 pr-20 rounded-[18px] bg-[#f8f9fd] border border-[#e9edf7] outline-none text-[#2d3142] placeholder:text-[#8b93a7] focus:border-[#2453c4] transition-colors"
             type={show ? "text" : "password"}
-            placeholder="Enter Password"
+            placeholder="Create a password"
             onChange={(e) => setPassword(e.target.value)}
           />
           <button
             onClick={handleClick}
-            className="px-3 bg-gray-200 border rounded-r"
+            className="absolute right-3 top-1/2 -translate-y-1/2 px-4 h-10 rounded-[12px] bg-white border border-[#e9edf7] text-[#2453c4] text-[13px] font-semibold hover:bg-[#f8f9fd] transition-colors"
           >
             {show ? "Hide" : "Show"}
           </button>
@@ -135,17 +141,19 @@ const Signup = () => {
       </div>
 
       <div>
-        <label className="block mb-1 text-sm font-medium">Confirm Password</label>
-        <div className="flex">
+        <label className="block mb-2 text-[13px] font-semibold text-[#2d3142]">
+          Confirm Password
+        </label>
+        <div className="relative">
           <input
-            className="w-full p-2 border rounded-l"
+            className="w-full h-[56px] px-5 pr-20 rounded-[18px] bg-[#f8f9fd] border border-[#e9edf7] outline-none text-[#2d3142] placeholder:text-[#8b93a7] focus:border-[#2453c4] transition-colors"
             type={show ? "text" : "password"}
-            placeholder="Confirm password"
+            placeholder="Confirm your password"
             onChange={(e) => setConfirmpassword(e.target.value)}
           />
           <button
             onClick={handleClick}
-            className="px-3 bg-gray-200 border rounded-r"
+            className="absolute right-3 top-1/2 -translate-y-1/2 px-4 h-10 rounded-[12px] bg-white border border-[#e9edf7] text-[#2453c4] text-[13px] font-semibold hover:bg-[#f8f9fd] transition-colors"
           >
             {show ? "Hide" : "Show"}
           </button>
@@ -153,21 +161,23 @@ const Signup = () => {
       </div>
 
       <div>
-        <label className="block mb-1 text-sm font-medium">Upload your Picture</label>
+        <label className="block mb-2 text-[13px] font-semibold text-[#2d3142]">
+          Profile Picture
+        </label>
         <input
           type="file"
-          className="w-full p-2 border rounded"
           accept="image/*"
           onChange={(e) => postDetails(e.target.files[0])}
+          className="w-full h-[56px] px-4 py-3 rounded-[18px] bg-[#f8f9fd] border border-[#e9edf7] outline-none text-[#2d3142] file:mr-4 file:px-4 file:h-10 file:border-0 file:rounded-[12px] file:bg-white file:text-[#2453c4] file:font-semibold"
         />
       </div>
 
       <button
         onClick={submitHandler}
-        className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600"
+        className="w-full h-[56px] rounded-[18px] bg-[#2453c4] text-white font-semibold text-[15px] shadow-[0_20px_35px_rgba(36,83,196,0.25)] hover:scale-[0.99] active:scale-[0.98] transition-all disabled:opacity-60"
         disabled={picLoading}
       >
-        {picLoading ? "Loading..." : "Sign Up"}
+        {picLoading ? "Creating account..." : "Create Account"}
       </button>
     </div>
   );

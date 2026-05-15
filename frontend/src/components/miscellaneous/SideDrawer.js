@@ -18,15 +18,27 @@ function SideDrawer() {
   const [isOpen, setIsOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    return document.documentElement.classList.contains("dark");
-  });
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("theme");
+
+    if (savedTheme === "dark") {
+      setIsDarkMode(true);
+      document.documentElement.classList.add("dark");
+    } else {
+      setIsDarkMode(false);
+      document.documentElement.classList.remove("dark");
+    }
+  }, []);
 
   useEffect(() => {
     if (isDarkMode) {
       document.documentElement.classList.add("dark");
+      localStorage.setItem("theme", "dark");
     } else {
       document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
     }
   }, [isDarkMode]);
 
@@ -108,85 +120,77 @@ function SideDrawer() {
 
   return (
     <>
-      <div className="w-full px-3 md:px-5 pt-3 md:pt-4 pb-2 bg-transparent">
-        <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/70 dark:bg-[#151821]/80 backdrop-blur-xl px-4 py-3 shadow-glass">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-orange-400 to-amber-500 text-sm font-bold text-white shadow-md">
-              S
-            </div>
-
-            <div>
-              <h1 className="text-sm md:text-base font-semibold tracking-tight text-slate-800 dark:text-white">
-                AMIGOS
-              </h1>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                Real-time messaging
-              </p>
-            </div>
+      <div className="flex h-full w-full flex-col items-center justify-between py-6">
+        {/* Top section */}
+        <div className="flex flex-col items-center gap-4">
+          {/* App logo */}
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-lg font-bold text-[#2d5bdb] shadow-lg">
+            S
           </div>
 
-          <div className="flex items-center gap-2 md:gap-3">
-            <button
-              onClick={() => setIsDarkMode((prev) => !prev)}
-              className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100/80 dark:bg-white/5 text-sm transition-all hover:scale-105 text-slate-700 dark:text-slate-200"
-            >
-              {isDarkMode ? "☀️" : "🌙"}
-            </button>
+          {/* Search */}
+          <button
+            onClick={onOpen}
+            className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 text-xl text-white transition-all duration-200 hover:scale-105 hover:bg-white/20"
+          >
+            🔍
+          </button>
 
-            <button
-              onClick={onOpen}
-              className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100/80 dark:bg-white/5 text-sm transition-all hover:scale-105 text-slate-700 dark:text-slate-200"
-            >
-              🔍
-            </button>
+          {/* Theme toggle */}
+          <button
+            onClick={() => setIsDarkMode((prev) => !prev)}
+            className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 text-lg text-white transition-all duration-200 hover:scale-105 hover:bg-white/20"
+          >
+            {isDarkMode ? "☀️" : "🌙"}
+          </button>
+        </div>
 
-            <div className="relative">
-              <button
-                onClick={() => setIsProfileOpen((prev) => !prev)}
-                className="flex items-center gap-2 rounded-xl bg-slate-100/80 dark:bg-white/5 p-1.5 transition-all hover:scale-[1.02]"
+        {/* Bottom profile section */}
+        <div className="relative flex flex-col items-center gap-4">
+          <button
+            onClick={() => setIsProfileOpen((prev) => !prev)}
+            className="overflow-hidden rounded-2xl border-2 border-white/20 transition-all hover:scale-105"
+          >
+            <img
+              src={
+                user.pic ||
+                "https://ui-avatars.com/api/?name=" +
+                  encodeURIComponent(user.name)
+              }
+              onError={(e) => {
+                e.target.src =
+                  "https://ui-avatars.com/api/?name=" +
+                  encodeURIComponent(user.name);
+              }}
+              className="h-14 w-14 object-cover"
+              alt={user.name}
+            />
+          </button>
+
+          {isProfileOpen && (
+            <div className="absolute bottom-20 left-[78px] z-50 w-56 overflow-hidden rounded-3xl border border-white/10 bg-white/95 dark:bg-[#171a22]/95 backdrop-blur-xl shadow-2xl">
+              <div className="px-5 py-4 hover:bg-slate-100/70 dark:hover:bg-white/5 cursor-pointer transition-all text-sm text-slate-700 dark:text-slate-200">
+                <ProfileModal user={user}>
+                  <span>My Profile</span>
+                </ProfileModal>
+              </div>
+
+              <div className="border-t border-slate-200 dark:border-white/10" />
+
+              <div
+                onClick={logoutHandler}
+                className="px-5 py-4 hover:bg-rose-50 dark:hover:bg-rose-500/10 cursor-pointer transition-all text-sm text-rose-500"
               >
-                <img
-                  src={
-                    user.pic ||
-                    "https://ui-avatars.com/api/?name=" +
-                      encodeURIComponent(user.name)
-                  }
-                  onError={(e) => {
-                    e.target.src =
-                      "https://ui-avatars.com/api/?name=" +
-                      encodeURIComponent(user.name);
-                  }}
-                  className="h-8 w-8 rounded-xl object-cover"
-                  alt={user.name}
-                />
-              </button>
-
-              {isProfileOpen && (
-                <div className="absolute right-0 top-12 z-50 w-52 overflow-hidden rounded-2xl border border-white/10 bg-white/90 dark:bg-[#171a22]/95 backdrop-blur-xl shadow-elevated">
-                  <div className="px-4 py-3 hover:bg-slate-100/70 dark:hover:bg-white/5 cursor-pointer transition-all text-sm text-slate-700 dark:text-slate-200">
-                    <ProfileModal user={user}>
-                      <span>My Profile</span>
-                    </ProfileModal>
-                  </div>
-
-                  <div className="border-t border-white/10" />
-
-                  <div
-                    onClick={logoutHandler}
-                    className="px-4 py-3 hover:bg-rose-50 dark:hover:bg-rose-500/10 cursor-pointer transition-all text-sm text-rose-500"
-                  >
-                    Logout
-                  </div>
-                </div>
-              )}
+                Logout
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
       {isOpen && (
         <div className="fixed inset-0 z-50 flex">
-          <div className="w-full max-w-[360px] h-full bg-[#f5f5f5] dark:bg-[#0f1117] border-r border-white/10 shadow-elevated overflow-hidden flex flex-col">
+          <div className="w-full max-w-[380px] h-full rounded-r-[36px] bg-[#f5f5f5] dark:bg-[#0f1117] border-r border-white/10 shadow-elevated overflow-hidden flex flex-col">
             <div className="p-4 border-b border-slate-200/70 dark:border-white/10 bg-white/70 dark:bg-[#151821]/80 backdrop-blur-xl">
               <div className="flex items-center justify-between mb-4">
                 <div>

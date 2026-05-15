@@ -1,6 +1,13 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+} from "react";
 import { useHistory } from "react-router-dom";
 import io from "socket.io-client";
+import axios from "axios";
 
 const ChatContext = createContext();
 
@@ -13,15 +20,26 @@ const ChatProvider = ({ children }) => {
   const [lastSeenMap, setLastSeenMap] = useState({});
   const [socket, setSocket] = useState(null);
 
-  const addNotification = (newMessage) => {
-    setNotification((prev) => {
-      const exists = prev.some((msg) => msg._id === newMessage._id);
-      if (exists) return prev;
-      return [newMessage, ...prev];
-    });
-  };
-
   const history = useHistory();
+
+  const fetchNotifications = useCallback(async (authUser) => {
+    try {
+      const config = {
+        headers: {
+          Authorization: `Bearer ${authUser.token}`,
+        },
+      };
+
+      const { data } = await axios.get(
+        "http://localhost:5001/api/notification",
+        config,
+      );
+
+      setNotification(data);
+    } catch (error) {
+      console.error("Failed to fetch notifications", error);
+    }
+  }, []);
 
   useEffect(() => {
     const userInfo = JSON.parse(localStorage.getItem("userInfo"));
@@ -32,11 +50,30 @@ const ChatProvider = ({ children }) => {
       console.log("Connecting socket...");
       setSocket(newSocket);
 
+      fetchNotifications(userInfo);
+
       newSocket.emit("setup", userInfo);
       console.log("Setup emitted:", userInfo._id);
 
       newSocket.on("connected", () => {
         console.log("Socket connected");
+      });
+
+      newSocket.on("notification received", (incomingNotification) => {
+        const incomingChatId =
+          incomingNotification?.chat?._id || incomingNotification?.chat;
+
+        const activeChatId = selectedChat?._id;
+
+        if (
+          incomingChatId &&
+          activeChatId &&
+          incomingChatId.toString() === activeChatId.toString()
+        ) {
+          return;
+        }
+
+        fetchNotifications(userInfo);
       });
 
       // Get initial list of online users
@@ -47,6 +84,9 @@ const ChatProvider = ({ children }) => {
 
       // Listen for users coming online
       newSocket.on("user online", (userId) => {
+        if (userInfo?.privacy?.showLastSeen === false) {
+          return;
+        }
         console.log("User online event received:", userId);
         setOnlineUsers((prev) => {
           if (prev.includes(userId)) return prev;
@@ -58,6 +98,9 @@ const ChatProvider = ({ children }) => {
 
       // Listen for users going offline
       newSocket.on("user offline", ({ userId, lastSeen }) => {
+        if (userInfo?.privacy?.showLastSeen === false) {
+          return;
+        }
         console.log("User offline event received:", {
           userId,
           lastSeen,
@@ -81,7 +124,7 @@ const ChatProvider = ({ children }) => {
 
     if (!userInfo) history.push("/");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [history]);
+  }, [history, fetchNotifications]);
 
   return (
     <ChatContext.Provider
@@ -90,14 +133,16 @@ const ChatProvider = ({ children }) => {
         setSelectedChat,
         user,
         setUser,
+        lastSeenMap,
+        setLastSeenMap,
+        setOnlineUsers,
         notification,
         setNotification,
         chats,
         setChats,
         onlineUsers,
-        lastSeenMap,
         socket,
-        addNotification,
+        fetchNotifications,
       }}
     >
       {children}
