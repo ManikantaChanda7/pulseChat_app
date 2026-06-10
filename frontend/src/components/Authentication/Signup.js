@@ -33,22 +33,13 @@ const Signup = () => {
     }
     console.log(name, email, password, pic);
     try {
-      const config = {
-        headers: {
-          "Content-type": "application/json",
-        },
-      };
       console.log("[Signup] Sending request to backend...");
-      const { data } = await API.post(
-        "/api/user",
-        {
+      const { data } = await API.post("/api/user", {
           name,
           email,
           password,
           pic,
-        },
-        config
-      );
+      });
       console.log("[Signup] Response received:", data);
       console.log("Registration Successful");
       localStorage.setItem("userInfo", JSON.stringify(data));
@@ -96,85 +87,94 @@ const Signup = () => {
   };
 
   return (
-    <div className="flex flex-col gap-5">
-      <div>
-        <label className="block mb-2 text-[13px] font-semibold text-[#2d3142]">
-          Full Name
-        </label>
-        <input
-          className="w-full h-[56px] px-5 rounded-[18px] bg-[#f8f9fd] border border-[#e9edf7] outline-none text-[#2d3142] placeholder:text-[#8b93a7] focus:border-[#2453c4] transition-colors"
-          placeholder="Enter your full name"
-          onChange={(e) => setName(e.target.value)}
-        />
+    <div className="flex flex-col gap-3 max-w-2xl mx-auto w-full">
+      <div className="text-center mb-1">
+        <div className="inline-flex items-center justify-center w-12 h-12 rounded-3xl bg-blue-600 text-white text-2xl font-bold mb-4">
+          ✨
+        </div>
+        <h2 className="text-2xl font-bold text-slate-900">Create Account</h2>
+        <p className="mt-1 text-sm text-slate-500">Join the conversation in seconds</p>
       </div>
-
-      <div>
-        <label className="block mb-2 text-[13px] font-semibold text-[#2d3142]">
-          Email Address
-        </label>
-        <input
-          className="w-full h-[56px] px-5 rounded-[18px] bg-[#f8f9fd] border border-[#e9edf7] outline-none text-[#2d3142] placeholder:text-[#8b93a7] focus:border-[#2453c4] transition-colors"
-          type="email"
-          placeholder="Enter your email address"
-          onChange={(e) => setEmail(e.target.value)}
-        />
-      </div>
-
-      <div>
-        <label className="block mb-2 text-[13px] font-semibold text-[#2d3142]">
-          Password
-        </label>
-        <div className="relative">
+      <div className="grid md:grid-cols-2 gap-3">
+        <div>
+          <label className="block mb-2 text-sm font-semibold text-slate-700">
+            Full Name
+          </label>
           <input
-            className="w-full h-[56px] px-5 pr-20 rounded-[18px] bg-[#f8f9fd] border border-[#e9edf7] outline-none text-[#2d3142] placeholder:text-[#8b93a7] focus:border-[#2453c4] transition-colors"
-            type={show ? "text" : "password"}
-            placeholder="Create a password"
-            onChange={(e) => setPassword(e.target.value)}
+            className="w-full h-[48px] px-5 rounded-2xl bg-slate-50 border border-slate-200 outline-none text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all"
+            placeholder="Enter your full name"
+            onChange={(e) => setName(e.target.value)}
           />
-          <button
-            onClick={handleClick}
-            className="absolute right-3 top-1/2 -translate-y-1/2 px-4 h-10 rounded-[12px] bg-white border border-[#e9edf7] text-[#2453c4] text-[13px] font-semibold hover:bg-[#f8f9fd] transition-colors"
-          >
-            {show ? "Hide" : "Show"}
-          </button>
+        </div></div><div>
+        <div>
+          <label className="block mb-2 text-sm font-semibold text-slate-700">
+            Email Address
+          </label>
+          <input
+            className="w-full h-[48px] px-5 rounded-2xl bg-slate-50 border border-slate-200 outline-none text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all"
+            type="email"
+            placeholder="Enter your email address"
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-3">
+        <div>
+          <label className="block mb-2 text-sm font-semibold text-slate-700">
+            Password
+          </label>
+          <div className="relative">
+            <input
+              className="w-full h-[48px] px-5 pr-24 rounded-2xl bg-slate-50 border border-slate-200 outline-none text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all"
+              type={show ? "text" : "password"}
+              placeholder="Create a password"
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            <button
+              onClick={handleClick}
+              className="absolute right-3 top-1/2 -translate-y-1/2 px-4 h-10 rounded-xl bg-slate-900 text-white text-[13px] font-semibold hover:bg-slate-700 transition-all"
+            >
+              {show ? "Hide" : "Show"}
+            </button>
+          </div>
+        </div></div><div>
+        <div>
+          <label className="block mb-2 text-sm font-semibold text-slate-700">
+            Confirm Password
+          </label>
+          <div className="relative">
+            <input
+              className="w-full h-[48px] px-5 pr-24 rounded-2xl bg-slate-50 border border-slate-200 outline-none text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all"
+              type={show ? "text" : "password"}
+              placeholder="Confirm your password"
+              onChange={(e) => setConfirmpassword(e.target.value)}
+            />
+            <button
+              onClick={handleClick}
+              className="absolute right-3 top-1/2 -translate-y-1/2 px-4 h-10 rounded-xl bg-slate-900 text-white text-[13px] font-semibold hover:bg-slate-700 transition-all"
+            >
+              {show ? "Hide" : "Show"}
+            </button>
+          </div>
         </div>
       </div>
 
       <div>
-        <label className="block mb-2 text-[13px] font-semibold text-[#2d3142]">
-          Confirm Password
-        </label>
-        <div className="relative">
-          <input
-            className="w-full h-[56px] px-5 pr-20 rounded-[18px] bg-[#f8f9fd] border border-[#e9edf7] outline-none text-[#2d3142] placeholder:text-[#8b93a7] focus:border-[#2453c4] transition-colors"
-            type={show ? "text" : "password"}
-            placeholder="Confirm your password"
-            onChange={(e) => setConfirmpassword(e.target.value)}
-          />
-          <button
-            onClick={handleClick}
-            className="absolute right-3 top-1/2 -translate-y-1/2 px-4 h-10 rounded-[12px] bg-white border border-[#e9edf7] text-[#2453c4] text-[13px] font-semibold hover:bg-[#f8f9fd] transition-colors"
-          >
-            {show ? "Hide" : "Show"}
-          </button>
-        </div>
-      </div>
-
-      <div>
-        <label className="block mb-2 text-[13px] font-semibold text-[#2d3142]">
+        <label className="block mb-2 text-sm font-semibold text-slate-700">
           Profile Picture
         </label>
         <input
           type="file"
           accept="image/*"
           onChange={(e) => postDetails(e.target.files[0])}
-          className="w-full h-[56px] px-4 py-3 rounded-[18px] bg-[#f8f9fd] border border-[#e9edf7] outline-none text-[#2d3142] file:mr-4 file:px-4 file:h-10 file:border-0 file:rounded-[12px] file:bg-white file:text-[#2453c4] file:font-semibold"
+          className="w-full h-[48px] px-3 py-2 rounded-xl bg-slate-50 border border-dashed border-slate-300 outline-none text-slate-600 file:mr-3 file:px-3 file:h-8 file:border-0 file:rounded-lg file:bg-blue-600 file:text-white file:font-semibold"
         />
       </div>
 
       <button
         onClick={submitHandler}
-        className="w-full h-[56px] rounded-[18px] bg-[#2453c4] text-white font-semibold text-[15px] shadow-[0_20px_35px_rgba(36,83,196,0.25)] hover:scale-[0.99] active:scale-[0.98] transition-all disabled:opacity-60"
+        className="w-full h-[48px] rounded-2xl bg-blue-600 text-white font-bold text-[15px] hover:bg-blue-700 transition-all disabled:opacity-60"
         disabled={picLoading}
       >
         {picLoading ? "Creating account..." : "Create Account"}

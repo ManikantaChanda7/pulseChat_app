@@ -175,6 +175,14 @@ export default function ChatList({ fetchAgain, chatTab }) {
     if (!socket) return;
 
     const handleRealtimeChatUpdate = (newMessage) => {
+      if (
+        newMessage?.isScheduled &&
+        !newMessage?.scheduledSent &&
+        newMessage?.sender?._id !== user._id
+      ) {
+        return;
+      }
+
       setChats((prevChats) => {
         if (!Array.isArray(prevChats)) {
           return prevChats;

@@ -1,6 +1,18 @@
 const asyncHandler = require("express-async-handler");
 const User = require("../models/userModel");
-const generateToken = require("../config/generateToken");
+const {
+  generateAccessToken,
+  generateRefreshToken,
+} = require("../config/generateToken");
+
+const setRefreshCookie = (res, token) => {
+  res.cookie("refreshToken", token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
+};
 
 //@description     Get or Search all users
 //@route           GET /api/user?search=
@@ -15,7 +27,9 @@ const allUsers = asyncHandler(async (req, res) => {
       }
     : {};
 
-  const users = await User.find(keyword).find({ _id: { $ne: req.user._id } });
+  const users = await User.find(keyword)
+    .find({ _id: { $ne: req.user._id } })
+    .select("-password -refreshToken");
   res.send(users);
 });
 
@@ -30,7 +44,7 @@ const registerUser = asyncHandler(async (req, res) => {
     throw new Error("Please Enter all the Feilds");
   }
 
-  const userExists = await User.findOne({ email });
+  const userExists = await User.findOne({ email: email.toLowerCase() });
 
   if (userExists) {
     res.status(400);
@@ -45,6 +59,12 @@ const registerUser = asyncHandler(async (req, res) => {
   });
 
   if (user) {
+    const accessToken = generateAccessToken(user._id);
+    const refreshToken = generateRefreshToken(user._id);
+    user.refreshToken = refreshToken;
+    await user.save();
+    setRefreshCookie(res, refreshToken);
+
     res.status(201).json({
       _id: user._id,
       name: user.name,
@@ -53,7 +73,7 @@ const registerUser = asyncHandler(async (req, res) => {
       pic: user.pic,
       lastSeen: user.lastSeen,
       privacy: user.privacy,
-      token: generateToken(user._id),
+      token: accessToken,
     });
   } else {
     res.status(400);
@@ -67,9 +87,15 @@ const registerUser = asyncHandler(async (req, res) => {
 const authUser = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
-  const user = await User.findOne({ email });
+  const user = await User.findOne({ email: email.toLowerCase() });
 
   if (user && (await user.matchPassword(password))) {
+    const accessToken = generateAccessToken(user._id);
+    const refreshToken = generateRefreshToken(user._id);
+    user.refreshToken = refreshToken;
+    await user.save();
+    setRefreshCookie(res, refreshToken);
+
     res.json({
       _id: user._id,
       name: user.name,
@@ -78,7 +104,7 @@ const authUser = asyncHandler(async (req, res) => {
       pic: user.pic,
       lastSeen: user.lastSeen,
       privacy: user.privacy,
-      token: generateToken(user._id),
+      token: accessToken,
     });
   } else {
     res.status(401);
@@ -115,9 +141,57 @@ const updatePrivacySettings = asyncHandler(async (req, res) => {
   });
 });
 
+const refreshAccessToken = asyncHandler(async (req, res) => {
+  const refreshToken = req.cookies?.refreshToken;
+
+  if (!refreshToken) {
+    res.status(401);
+    throw new Error("No refresh token");
+  }
+
+  const jwt = require("jsonwebtoken");
+  const decoded = jwt.verify(
+    refreshToken,
+    process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET,
+  );
+
+  const user = await User.findById(decoded.id);
+
+  if (!user || user.refreshToken !== refreshToken) {
+    res.status(401);
+    throw new Error("Invalid refresh token");
+  }
+
+  const newAccessToken = generateAccessToken(user._id);
+  const newRefreshToken = generateRefreshToken(user._id);
+
+  user.refreshToken = newRefreshToken;
+  await user.save();
+
+  setRefreshCookie(res, newRefreshToken);
+
+  res.json({ token: newAccessToken });
+});
+
+const logoutUser = asyncHandler(async (req, res) => {
+  const refreshToken = req.cookies?.refreshToken;
+
+  if (refreshToken) {
+    await User.findOneAndUpdate(
+      { refreshToken },
+      { $set: { refreshToken: null } },
+    );
+  }
+
+  res.clearCookie("refreshToken");
+  res.json({ message: "Logged out successfully" });
+});
+
 module.exports = {
   allUsers,
   registerUser,
   authUser,
   updatePrivacySettings,
+  refreshAccessToken,
+  logoutUser,
 };

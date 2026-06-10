@@ -104,7 +104,7 @@ export default function NotificationsPage() {
           : n,
       ),
     );
-    history.push(item.chat?.isGroupChat ? "/groups" : "/t");
+    history.push(item.chat?.isGroupChat ? "/groups" : "/chats");
   };
 
   return (

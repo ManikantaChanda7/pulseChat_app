@@ -187,6 +187,11 @@ const messageSchema = mongoose.Schema(
       type: Boolean,
       default: false,
     },
+
+    scheduledJobId: {
+      type: String,
+      default: null,
+    },
   },
   { timestamps: true },
 );

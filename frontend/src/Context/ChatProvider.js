@@ -7,7 +7,7 @@ import React, {
 } from "react";
 import { useHistory } from "react-router-dom";
 import io from "socket.io-client";
-import axios from "axios";
+import API from "../config/api";
 
 const ChatContext = createContext();
 
@@ -22,18 +22,9 @@ const ChatProvider = ({ children }) => {
 
   const history = useHistory();
 
-  const fetchNotifications = useCallback(async (authUser) => {
+  const fetchNotifications = useCallback(async () => {
     try {
-      const config = {
-        headers: {
-          Authorization: `Bearer ${authUser.token}`,
-        },
-      };
-
-      const { data } = await axios.get(
-        "http://localhost:5001/api/notification",
-        config,
-      );
+      const { data } = await API.get("/api/notification");
 
       setNotification(data);
     } catch (error) {
@@ -50,9 +41,9 @@ const ChatProvider = ({ children }) => {
       console.log("Connecting socket...");
       setSocket(newSocket);
 
-      fetchNotifications(userInfo);
+      fetchNotifications();
 
-      newSocket.emit("setup", userInfo);
+      newSocket.emit("setup", { _id: userInfo._id });
       console.log("Setup emitted:", userInfo._id);
 
       newSocket.on("connected", () => {
@@ -73,7 +64,7 @@ const ChatProvider = ({ children }) => {
           return;
         }
 
-        fetchNotifications(userInfo);
+        fetchNotifications();
       });
 
       // Get initial list of online users

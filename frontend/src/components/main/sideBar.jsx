@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import API from "../../config/api";
 import { ChatState } from "../../Context/ChatProvider";
 import { useHistory } from "react-router-dom";
 import { FileText, MessageSquare, Users, Bell, Settings } from "lucide-react";
@@ -12,10 +13,16 @@ export default function LeftSidebar({ chatTab, setChatTab }) {
   ? notification.filter((n) => !n.isRead).length
   : 0;
 
-  const handleLogout = () => {
-    localStorage.removeItem("userInfo");
-    localStorage.removeItem("token");
-    history.push("/");
+  const handleLogout = async () => {
+    try {
+      await API.post("/api/user/logout");
+    } catch (error) {
+      console.error("Logout failed", error);
+    } finally {
+      localStorage.removeItem("userInfo");
+      localStorage.removeItem("token");
+      history.push("/");
+    }
   };
 
   return (

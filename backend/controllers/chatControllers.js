@@ -106,6 +106,15 @@ const updateReadState = asyncHandler(async (req, res) => {
     select: "name pic email",
   });
 
+  if (
+    updatedChat?.latestMessage &&
+    updatedChat.latestMessage.isScheduled &&
+    !updatedChat.latestMessage.scheduledSent &&
+    updatedChat.latestMessage.sender?.toString() !== req.user._id.toString()
+  ) {
+    updatedChat.latestMessage = null;
+  }
+
   res.status(200).json(populatedChat);
 });
 
@@ -235,6 +244,37 @@ const fetchChats = asyncHandler(async (req, res) => {
           path: "latestMessage.sender",
           select: "name pic email",
         });
+
+        results = await Promise.all(
+          results.map(async (chat) => {
+            const latest = chat.latestMessage;
+
+            if (
+              latest &&
+              latest.isScheduled &&
+              !latest.scheduledSent &&
+              latest.sender?._id?.toString() !== req.user._id.toString()
+            ) {
+              const fallbackMessage = await Message.findOne({
+                chat: chat._id,
+                _id: { $ne: latest._id },
+                deletedFor: { $ne: req.user._id },
+                $or: [
+                  { isScheduled: false },
+                  { scheduledSent: true },
+                  { sender: req.user._id },
+                ],
+              })
+                .sort({ createdAt: -1 })
+                .populate("sender", "name pic email");
+
+              chat.latestMessage = fallbackMessage || null;
+            }
+
+            return chat;
+          }),
+        );
+
         res.status(200).send(results);
       });
   } catch (error) {

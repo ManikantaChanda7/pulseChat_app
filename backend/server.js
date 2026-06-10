@@ -7,25 +7,75 @@ const messageRoutes = require("./routes/messageRoutes");
 const { notFound, errorHandler } = require("./middleware/errorMiddleware");
 const path = require("path");
 const cors = require("cors");
+const helmet = require("helmet");
+const compression = require("compression");
+const mongoSanitize = require("express-mongo-sanitize");
+const rateLimit = require("express-rate-limit");
+const cookieParser = require("cookie-parser");
+const { createAdapter } = require("@socket.io/redis-adapter");
+const Redis = require("ioredis");
+const {
+  addUserSocket,
+  removeUserSocket,
+  getOnlineUsers,
+} = require("./utils/presence");
 
 const Message = require("./models/messageModel");
 const User = require("./models/userModel");
 const Notification = require("./models/notificationModel");
 const notificationRoutes = require("./routes/notificationRoutes");
+const {
+  startScheduledMessageWorker,
+} = require("./workers/scheduledMessageWorker");
 
 dotenv.config({ path: require("path").join(__dirname, ".env") });
 connectDB();
 
 const app = express();
 
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 mins
+  max: 20,
+  message: {
+    message: "Too many authentication attempts. Please try again later.",
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const searchLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 min
+  max: 60,
+  message: {
+    message: "Too many requests. Please slow down.",
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.set("trust proxy", 1);
+
 app.use(
   cors({
     origin: process.env.CORS_ORIGIN || "http://localhost:3000",
     credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   }),
 );
 
-app.use(express.json());
+app.use(helmet());
+app.use(compression());
+app.use(mongoSanitize());
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+
+app.use("/api/user/login", authLimiter);
+app.use("/api/user", (req, res, next) => {
+  if (req.path === "/login") return next();
+  searchLimiter(req, res, next);
+});
+app.use(cookieParser());
 
 app.use("/api/user", userRoutes);
 app.use("/api/chat", chatRoutes);
@@ -63,129 +113,139 @@ const io = require("socket.io")(server, {
   },
 });
 
+const pubClient = new Redis(process.env.REDIS_URL || "redis://127.0.0.1:6379", {
+  maxRetriesPerRequest: null,
+});
+const subClient = pubClient.duplicate();
+io.adapter(createAdapter(pubClient, subClient));
+
 // Pass io object to Express app so routes can access it
 app.set("io", io);
 
+startScheduledMessageWorker(io);
+
 console.log("\n[✅ SOCKET.IO INITIALIZED AND SET ON APP]\n");
 
-const onlineUsers = new Map();
-
 // Scheduled message delivery worker
-setInterval(async () => {
-  try {
-    const pendingMessages = await Message.find({
-      isScheduled: true,
-      scheduledSent: false,
-      scheduledFor: { $lte: new Date() },
-    })
-      .populate("sender", "name pic email")
-      .populate({
-        path: "chat",
-        populate: {
-          path: "users",
-          select: "name pic email",
-        },
-      })
-      .populate("reactions.user", "name pic email")
-      .populate("starredBy", "name pic email")
-      .populate({
-        path: "replyTo",
-        populate: {
-          path: "sender",
-          select: "name pic email",
-        },
-      });
+// setInterval(async () => {
+//   try {
+//     const pendingMessages = await Message.find({
+//       isScheduled: true,
+//       scheduledSent: false,
+//       scheduledFor: { $lte: new Date() },
+//     })
+//       .populate("sender", "name pic email")
+//       .populate({
+//         path: "chat",
+//         populate: {
+//           path: "users",
+//           select: "name pic email",
+//         },
+//       })
+//       .populate("reactions.user", "name pic email")
+//       .populate("starredBy", "name pic email")
+//       .populate({
+//         path: "replyTo",
+//         populate: {
+//           path: "sender",
+//           select: "name pic email",
+//         },
+//       });
 
-    for (const message of pendingMessages) {
-      console.log("[SCHEDULED MESSAGE SENT]", message._id);
+//     for (const message of pendingMessages) {
+//       console.log("[SCHEDULED MESSAGE SENT]", message._id);
 
-      message.scheduledSent = true;
-      await message.save();
-      await Notification.create({
-        recipient: message.sender._id,
-        actor: message.sender._id,
-        chat: message.chat._id,
-        message: message._id,
-        type: "system",
-        preview: "Your scheduled message was delivered",
-      });
+//       message.scheduledSent = true;
+//       await message.save();
+//       await Notification.create({
+//         recipient: message.sender._id,
+//         actor: message.sender._id,
+//         chat: message.chat._id,
+//         message: message._id,
+//         type: "system",
+//         preview: "Your scheduled message was delivered",
+//       });
 
-      const chat = message.chat;
+//       const chat = message.chat;
 
-      if (!chat?.users) continue;
+//       if (!chat?.users) continue;
 
-      const recipients = chat.users.filter(
-        (user) => user._id.toString() !== message.sender._id.toString(),
-      );
+//       const recipients = chat.users.filter(
+//         (user) => user._id.toString() !== message.sender._id.toString(),
+//       );
 
-      if (recipients.length > 0) {
-        const mentionedIds = (message.mentions || []).map((m) =>
-          m._id ? m._id.toString() : m.toString(),
-        );
+//       if (recipients.length > 0) {
+//         const mentionedIds = (message.mentions || []).map((m) =>
+//           m._id ? m._id.toString() : m.toString(),
+//         );
 
-        const notifications = recipients.map((recipient) => {
-          let preview = message.content;
+//         const notifications = recipients.map((recipient) => {
+//           let preview = message.content;
 
-          if (message.messageType === "image") preview = "shared an image";
-          if (message.messageType === "voice") preview = "sent a voice message";
-          if (message.messageType === "file") {
-            preview = message.fileName || "shared a file";
-          }
+//           if (message.messageType === "image") preview = "shared an image";
+//           if (message.messageType === "voice") preview = "sent a voice message";
+//           if (message.messageType === "file") {
+//             preview = message.fileName || "shared a file";
+//           }
 
-          return {
-            recipient: recipient._id,
-            actor: message.sender._id,
-            chat: chat._id,
-            message: message._id,
-            type: mentionedIds.includes(recipient._id.toString())
-              ? "mention"
-              : "message",
-            preview,
-          };
-        });
+//           return {
+//             recipient: recipient._id,
+//             actor: message.sender._id,
+//             chat: chat._id,
+//             message: message._id,
+//             type: mentionedIds.includes(recipient._id.toString())
+//               ? "mention"
+//               : "message",
+//             preview,
+//           };
+//         });
 
-        const createdNotifications =
-          await Notification.insertMany(notifications);
+//         const createdNotifications =
+//           await Notification.insertMany(notifications);
 
-        createdNotifications.forEach((notification) => {
-          io.to(notification.recipient.toString()).emit(
-            "notification received",
-            notification,
-          );
-        });
-      }
+//         createdNotifications.forEach((notification) => {
+//           io.to(notification.recipient.toString()).emit(
+//             "notification received",
+//             notification,
+//           );
+//         });
+//       }
 
-      chat.users.forEach((user) => {
-        // sender should only receive scheduled update
-        if (user._id.toString() === message.sender._id.toString()) {
-          io.to(user._id.toString()).emit("scheduled message sent", {
-            ...message.toObject(),
-            scheduledSent: true,
-            isScheduled: false,
-          });
-          return;
-        }
+//       chat.users.forEach((user) => {
+//         // sender should only receive scheduled update
+//         if (user._id.toString() === message.sender._id.toString()) {
+//           io.to(user._id.toString()).emit("scheduled message sent", {
+//             ...message.toObject(),
+//             scheduledSent: true,
+//             isScheduled: false,
+//           });
+//           return;
+//         }
 
-        // receivers should get normal realtime message flow
-        io.to(user._id.toString()).emit("message recieved", {
-          ...message.toObject(),
-          scheduledSent: true,
-          isScheduled: false,
-        });
-      });
-    }
-  } catch (error) {
-    console.error("Scheduled message worker error", error);
-  }
-}, 1000);
+//         // receivers should get normal realtime message flow
+//         io.to(user._id.toString()).emit("message recieved", {
+//           ...message.toObject(),
+//           scheduledSent: true,
+//           isScheduled: false,
+//         });
+//       });
+//     }
+//   } catch (error) {
+//     console.error("Scheduled message worker error", error);
+//   }
+// }, 1000);
 
 io.on("connection", (socket) => {
   console.log("Connected to socket.io, socket id:", socket.id);
 
   socket.on("setup", (userData) => {
+    console.log("CONNECTED:", userData._id, socket.id);
+    socket.userId = userData._id.toString();
     socket.join(userData._id.toString());
 
-    onlineUsers.set(userData._id.toString(), socket.id);
+    addUserSocket(userData._id.toString(), socket.id).catch((err) =>
+      console.error("PRESENCE ADD ERROR", err),
+    );
 
     User.findByIdAndUpdate(userData._id, {
       lastSeen: new Date(),
@@ -193,12 +253,12 @@ io.on("connection", (socket) => {
       .then(async () => {
         const userDoc = await User.findById(userData._id).select("privacy");
 
+        const onlineUserIds = await getOnlineUsers();
         const visibleOnlineUsers = [];
 
-        for (const onlineUserId of onlineUsers.keys()) {
-          const onlineUserDoc = await User.findById(onlineUserId).select(
-            "privacy",
-          );
+        for (const onlineUserId of onlineUserIds) {
+          const onlineUserDoc =
+            await User.findById(onlineUserId).select("privacy");
 
           if (onlineUserDoc?.privacy?.showLastSeen !== false) {
             visibleOnlineUsers.push(onlineUserId);
@@ -316,8 +376,7 @@ io.on("connection", (socket) => {
       );
 
       const senderDoc = updatedMessage.chat.users.find(
-        (u) =>
-          u._id.toString() === updatedMessage.sender._id.toString(),
+        (u) => u._id.toString() === updatedMessage.sender._id.toString(),
       );
 
       const readReceiptsAllowed =
@@ -407,33 +466,34 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", async () => {
-    for (let [userId, socketId] of onlineUsers.entries()) {
-      if (socketId === socket.id) {
-        onlineUsers.delete(userId);
+    console.log("DISCONNECTED:", socket.id);
+    try {
+      const userId = socket.userId;
 
-        const lastSeen = new Date();
+      if (!userId) return;
 
-        try {
-          await User.findByIdAndUpdate(userId, {
-            lastSeen,
-          });
+      const stillOnline = await removeUserSocket(userId, socket.id);
 
-          const userDoc = await User.findById(userId).select("privacy");
+      if (stillOnline) return;
 
-          if (userDoc?.privacy?.showLastSeen !== false) {
-            io.emit("user offline", {
-              userId,
-              lastSeen,
-            });
-          }
+      const lastSeen = new Date();
 
-          console.log("[USER OFFLINE LAST SEEN UPDATED]", userId, lastSeen);
-        } catch (error) {
-          console.error("LAST SEEN UPDATE ERROR", error);
-        }
+      await User.findByIdAndUpdate(userId, {
+        lastSeen,
+      });
 
-        break;
+      const userDoc = await User.findById(userId).select("privacy");
+
+      if (userDoc?.privacy?.showLastSeen !== false) {
+        io.emit("user offline", {
+          userId,
+          lastSeen,
+        });
       }
+
+      console.log("[USER OFFLINE LAST SEEN UPDATED]", userId, lastSeen);
+    } catch (error) {
+      console.error("LAST SEEN UPDATE ERROR", error);
     }
   });
 });

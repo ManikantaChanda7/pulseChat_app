@@ -12,8 +12,6 @@ const clearMessages = async () => {
 
     const result = await Message.deleteMany({});
 
-    console.log(`Deleted ${result.deletedCount} messages`);
-
     process.exit();
   } catch (error) {
     console.error("Cleanup failed:", error);

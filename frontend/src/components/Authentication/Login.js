@@ -22,17 +22,10 @@ const Login = () => {
     }
 
     try {
-      const config = {
-        headers: {
-          "Content-type": "application/json",
-        },
-      };
-
-      const { data } = await API.post(
-        "/api/user/login",
-        { email, password },
-        config
-      );
+      const { data } = await API.post("/api/user/login", {
+        email,
+        password,
+      });
 
       console.log("Login Successful");
       // setUser(data);
@@ -46,13 +39,20 @@ const Login = () => {
   };
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
+      <div className="text-center mb-1">
+        <div className="inline-flex items-center justify-center w-12 h-12 rounded-3xl bg-blue-600 text-white text-2xl font-bold mb-4">
+          💬
+        </div>
+        <h2 className="text-2xl font-bold text-slate-900">Welcome Back</h2>
+        <p className="mt-2 text-slate-500">Sign in to continue chatting</p>
+      </div>
       <div>
-        <label className="block mb-2 text-[13px] font-semibold text-[#2d3142]">
+        <label className="block mb-2 text-sm font-semibold text-slate-700">
           Email Address
         </label>
         <input
-          className="w-full h-[56px] px-5 rounded-[18px] bg-[#f8f9fd] border border-[#e9edf7] outline-none text-[#2d3142] placeholder:text-[#8b93a7] focus:border-[#2453c4] transition-colors"
+          className="w-full h-[48px] px-5 rounded-2xl bg-slate-50 border border-slate-200 outline-none text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all"
           value={email}
           type="email"
           placeholder="Enter your email address"
@@ -61,13 +61,13 @@ const Login = () => {
       </div>
 
       <div>
-        <label className="block mb-2 text-[13px] font-semibold text-[#2d3142]">
+        <label className="block mb-2 text-sm font-semibold text-slate-700">
           Password
         </label>
 
         <div className="relative">
           <input
-            className="w-full h-[56px] px-5 pr-20 rounded-[18px] bg-[#f8f9fd] border border-[#e9edf7] outline-none text-[#2d3142] placeholder:text-[#8b93a7] focus:border-[#2453c4] transition-colors"
+            className="w-full h-[48px] px-5 pr-24 rounded-2xl bg-slate-50 border border-slate-200 outline-none text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             type={show ? "text" : "password"}
@@ -76,7 +76,7 @@ const Login = () => {
 
           <button
             onClick={handleClick}
-            className="absolute right-3 top-1/2 -translate-y-1/2 px-4 h-10 rounded-[12px] bg-white border border-[#e9edf7] text-[#2453c4] text-[13px] font-semibold hover:bg-[#f8f9fd] transition-colors"
+            className="absolute right-3 top-1/2 -translate-y-1/2 px-4 h-10 rounded-xl bg-slate-900 text-white text-[13px] font-semibold hover:bg-slate-700 transition-all"
           >
             {show ? "Hide" : "Show"}
           </button>
@@ -85,7 +85,7 @@ const Login = () => {
 
       <button
         onClick={submitHandler}
-        className="w-full h-[56px] rounded-[18px] bg-[#2453c4] text-white font-semibold text-[15px] shadow-[0_20px_35px_rgba(36,83,196,0.25)] hover:scale-[0.99] active:scale-[0.98] transition-all disabled:opacity-60"
+        className="w-full h-[48px] rounded-2xl bg-blue-600 text-white font-bold text-[15px] hover:bg-blue-700 transition-all disabled:opacity-60"
         disabled={loading}
       >
         {loading ? "Signing in..." : "Login"}
@@ -96,7 +96,7 @@ const Login = () => {
           setEmail("guest@example.com");
           setPassword("123456");
         }}
-        className="w-full h-[56px] rounded-[18px] bg-[#f8f9fd] border border-[#e9edf7] text-[#2d3142] font-semibold text-[14px] hover:bg-[#f4f6fc] transition-colors"
+        className="w-full h-[48px] rounded-2xl bg-slate-100 border border-slate-200 text-slate-700 font-semibold text-[14px] hover:bg-slate-200 transition-all"
       >
         Use Guest Account
       </button>

@@ -3,6 +3,7 @@ const Message = require("../models/messageModel");
 const User = require("../models/userModel");
 const Chat = require("../models/chatModel");
 const Notification = require("../models/notificationModel");
+const { scheduledMessageQueue } = require("../config/queue");
 
 // @description     Get Shared Files/Media
 // @route           GET /api/Message/shared-files
@@ -134,13 +135,14 @@ const allMessages = asyncHandler(async (req, res) => {
     const limit = Number(req.query.limit) || 20;
     const skip = (page - 1) * limit;
 
-    console.log("\n[=== ALL MESSAGES API CALLED ===]");
-    console.log("Chat ID:", req.params.chatId);
-    console.log("User ID:", req.user._id);
-
     let messages = await Message.find({
       chat: req.params.chatId,
       deletedFor: { $ne: req.user._id },
+      $or: [
+        { isScheduled: false },
+        { scheduledSent: true },
+        { sender: req.user._id },
+      ],
     })
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -176,13 +178,9 @@ const allMessages = asyncHandler(async (req, res) => {
       return !alreadySeen;
     });
 
-    console.log("Total messages:", messages.length);
-    console.log("Unseen messages:", unseenMessages.length);
-
     if (unseenMessages.length > 0) {
       const messageIds = unseenMessages.map((msg) => msg._id.toString());
 
-      console.log("[DB UPDATE] Marking as seen:", messageIds);
 
       const chatDoc = await Chat.findById(req.params.chatId).populate(
         "users",
@@ -234,13 +232,8 @@ const allMessages = asyncHandler(async (req, res) => {
 
       // Emit real-time seen update to each user in the chat
       const io = req.app.get("io");
-      console.log("[SOCKET IO CHECK]", io ? "✅ IO EXISTS" : "❌ IO IS NULL");
 
       if (io) {
-        console.log(
-          "[SOCKET EMIT] Chat users count:",
-          chatDoc?.users?.length || 0,
-        );
 
         if (chatDoc && chatDoc.users) {
           // Emit updated message objects with realtime allSeen state
@@ -251,21 +244,12 @@ const allMessages = asyncHandler(async (req, res) => {
             chatDoc.users.forEach((u) => {
               const userId = u._id.toString();
 
-              console.log(
-                `[SOCKET EMIT] TO USER: ${userId.slice(-6)} | allSeen: ${updatedMsg.allSeen}`,
-              );
-
               io.to(userId).emit("messages seen", {
                 chatId: req.params.chatId,
                 messageIds: [updatedMsg._id.toString()],
                 message: updatedMsg,
               });
             });
-
-            // Also emit to room
-            console.log(
-              `[SOCKET EMIT] TO ROOM: ${req.params.chatId} | allSeen: ${updatedMsg.allSeen}`,
-            );
 
             io.to(req.params.chatId).emit("messages seen", {
               chatId: req.params.chatId,
@@ -337,7 +321,6 @@ const sendMessage = asyncHandler(async (req, res) => {
   } = req.body;
 
   if (!content || !chatId) {
-    console.log("Invalid data passed into request");
     return res.sendStatus(400);
   }
 
@@ -398,6 +381,43 @@ const sendMessage = asyncHandler(async (req, res) => {
     });
 
     await Chat.findByIdAndUpdate(req.body.chatId, { latestMessage: message });
+
+    if (message.isScheduled) {
+      if (!message.scheduledFor) {
+        res.status(400);
+        throw new Error("Scheduled time is required");
+      }
+
+      const scheduledTime = new Date(message.scheduledFor);
+
+      if (Number.isNaN(scheduledTime.getTime())) {
+        res.status(400);
+        throw new Error("Invalid scheduled time");
+      }
+
+      const delay = scheduledTime.getTime() - Date.now();
+
+      if (delay <= 0) {
+        res.status(400);
+        throw new Error("Scheduled time must be in the future");
+      }
+
+      const job = await scheduledMessageQueue.add(
+        "deliver-scheduled-message",
+        {
+          messageId: message._id.toString(),
+        },
+        {
+          delay,
+          attempts: 3,
+          removeOnComplete: true,
+          removeOnFail: false,
+        },
+      );
+
+      message.scheduledJobId = job.id;
+      await message.save();
+    }
 
     const recipients = (message.chat?.users || []).filter(
       (u) => u._id.toString() !== req.user._id.toString(),

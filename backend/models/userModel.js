@@ -3,11 +3,17 @@ const bcrypt = require("bcryptjs");
 
 const userSchema = mongoose.Schema(
   {
-    name: { type: "String", required: true },
-    email: { type: "String", unique: true, required: true },
-    password: { type: "String", required: true },
+    name: { type: String, required: true },
+    email: {
+      type: String,
+      unique: true,
+      required: true,
+      lowercase: true,
+      trim: true,
+    },
+    password: { type: String, required: true },
     pic: {
-      type: "String",
+      type: String,
       default:
         "https://png.pngtree.com/png-clipart/20230927/original/pngtree-man-avatar-image-for-profile-png-image_13001882.png",
     },
@@ -31,8 +37,13 @@ const userSchema = mongoose.Schema(
         default: true,
       },
     },
+
+    refreshToken: {
+      type: String,
+      default: null,
+    },
   },
-  { timestaps: true },
+  { timestamps: true },
 );
 
 userSchema.methods.matchPassword = async function (enteredPassword) {
@@ -40,8 +51,8 @@ userSchema.methods.matchPassword = async function (enteredPassword) {
 };
 
 userSchema.pre("save", async function (next) {
-  if (!this.isModified) {
-    next();
+  if (!this.isModified("password")) {
+    return next();
   }
 
   const salt = await bcrypt.genSalt(10);
