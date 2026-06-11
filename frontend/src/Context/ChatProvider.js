@@ -77,9 +77,6 @@ const ChatProvider = ({ children }) => {
 
       // Listen for users coming online
       newSocket.on("user online", (userId) => {
-        if (userInfo?.privacy?.showLastSeen === false) {
-          return;
-        }
         console.log("User online event received:", userId);
         setOnlineUsers((prev) => {
           if (prev.includes(userId)) return prev;
@@ -91,9 +88,6 @@ const ChatProvider = ({ children }) => {
 
       // Listen for users going offline
       newSocket.on("user offline", ({ userId, lastSeen }) => {
-        if (userInfo?.privacy?.showLastSeen === false) {
-          return;
-        }
         console.log("User offline event received:", {
           userId,
           lastSeen,

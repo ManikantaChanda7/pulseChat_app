@@ -294,11 +294,10 @@ io.on("connection", (socket) => {
           }
         }
 
+        socket.emit("online users", visibleOnlineUsers);
+
         if (userDoc?.privacy?.showLastSeen !== false) {
-          socket.emit("online users", visibleOnlineUsers);
           socket.broadcast.emit("user online", userData._id);
-        } else {
-          socket.emit("online users", []);
         }
       })
       .catch((err) => console.error("LAST SEEN ONLINE UPDATE ERROR", err));
