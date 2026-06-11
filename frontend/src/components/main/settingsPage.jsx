@@ -20,13 +20,6 @@ export default function SettingsPage() {
       "Building conversations ✨",
   });
 
-  const [notifications, setNotifications] = useState({
-    sounds: true,
-    desktop: true,
-    reactions: true,
-    mentions: true,
-  });
-
   const [privacySettings, setPrivacySettings] = useState({
     readReceipts: user?.privacy?.readReceipts !== false,
     showLastSeen: user?.privacy?.showLastSeen !== false,

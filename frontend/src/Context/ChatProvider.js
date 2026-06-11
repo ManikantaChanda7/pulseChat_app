@@ -37,7 +37,9 @@ const ChatProvider = ({ children }) => {
     setUser(userInfo);
 
     if (userInfo) {
-      const newSocket = io("http://localhost:5001");
+      const newSocket = io(
+        process.env.REACT_APP_API_URL || "http://localhost:5001",
+      );
       console.log("Connecting socket...");
       setSocket(newSocket);
 

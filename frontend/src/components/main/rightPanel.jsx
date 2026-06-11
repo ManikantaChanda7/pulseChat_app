@@ -86,7 +86,9 @@ export default function RightPanel({ messages = [], chats = [], setChats }) {
     return (
       <div
         className={`w-[290px] h-full rounded-[34px] px-5 py-8 shrink-0 flex items-center justify-center transition-colors ${
-          isDark ? "bg-white/[0.04] backdrop-blur-2xl border border-white/10" : "bg-[#f8f8fb]"
+          isDark
+            ? "bg-white/[0.04] backdrop-blur-2xl border border-white/10"
+            : "bg-[#f8f8fb]"
         }`}
         style={{
           boxShadow: isDark
@@ -132,7 +134,9 @@ export default function RightPanel({ messages = [], chats = [], setChats }) {
   return (
     <div
       className={`w-[290px] h-full rounded-[34px] px-5 py-8 shrink-0 overflow-hidden flex flex-col transition-colors ${
-        isDark ? "bg-white/[0.04] backdrop-blur-2xl border border-white/10" : "bg-[#f8f8fb]"
+        isDark
+          ? "bg-white/[0.04] backdrop-blur-2xl border border-white/10"
+          : "bg-[#f8f8fb]"
       }`}
       style={{
         boxShadow: isDark
@@ -195,7 +199,9 @@ export default function RightPanel({ messages = [], chats = [], setChats }) {
                 isDark ? "text-white" : "text-[#2d3142]"
               }`}
             >
-              {selectedChat.isGroupChat ? selectedChat.chatName : otherUser?.name}
+              {selectedChat.isGroupChat
+                ? selectedChat.chatName
+                : otherUser?.name}
             </h2>
             {selectedChat.isGroupChat && isGroupAdmin && (
               <button
@@ -290,7 +296,9 @@ export default function RightPanel({ messages = [], chats = [], setChats }) {
         )}
         <div
           className={`rounded-[24px] p-4 transition-colors ${
-            isDark ? "bg-white/[0.05] backdrop-blur-xl border border-white/8" : "bg-white"
+            isDark
+              ? "bg-white/[0.05] backdrop-blur-xl border border-white/8"
+              : "bg-white"
           }`}
         >
           <h3
@@ -318,7 +326,9 @@ export default function RightPanel({ messages = [], chats = [], setChats }) {
               ))}
             </div>
           ) : (
-            <p className={`text-[13px] ${isDark ? "text-[#9ca3af]" : "text-[#7b8197]"}`}>
+            <p
+              className={`text-[13px] ${isDark ? "text-[#9ca3af]" : "text-[#7b8197]"}`}
+            >
               No media shared yet
             </p>
           )}
@@ -326,7 +336,9 @@ export default function RightPanel({ messages = [], chats = [], setChats }) {
 
         <div
           className={`rounded-[24px] p-4 transition-colors ${
-            isDark ? "bg-white/[0.05] backdrop-blur-xl border border-white/8" : "bg-white"
+            isDark
+              ? "bg-white/[0.05] backdrop-blur-xl border border-white/8"
+              : "bg-white"
           }`}
         >
           <h3
@@ -361,7 +373,9 @@ export default function RightPanel({ messages = [], chats = [], setChats }) {
               ))}
             </div>
           ) : (
-            <p className={`text-[13px] ${isDark ? "text-[#9ca3af]" : "text-[#7b8197]"}`}>
+            <p
+              className={`text-[13px] ${isDark ? "text-[#9ca3af]" : "text-[#7b8197]"}`}
+            >
               No files shared yet
             </p>
           )}
@@ -369,7 +383,9 @@ export default function RightPanel({ messages = [], chats = [], setChats }) {
 
         <div
           className={`rounded-[24px] p-4 transition-colors ${
-            isDark ? "bg-white/[0.05] backdrop-blur-xl border border-white/8" : "bg-white"
+            isDark
+              ? "bg-white/[0.05] backdrop-blur-xl border border-white/8"
+              : "bg-white"
           }`}
         >
           <h3
@@ -386,7 +402,9 @@ export default function RightPanel({ messages = [], chats = [], setChats }) {
                 <div
                   key={msg._id}
                   className={`rounded-[16px] px-4 py-3 ${
-                    isDark ? "bg-black/20 backdrop-blur-xl border border-white/8" : "bg-[#f8f9fd]"
+                    isDark
+                      ? "bg-black/20 backdrop-blur-xl border border-white/8"
+                      : "bg-[#f8f9fd]"
                   }`}
                 >
                   <p
@@ -397,18 +415,20 @@ export default function RightPanel({ messages = [], chats = [], setChats }) {
                     {msg.deleted
                       ? "Message deleted"
                       : msg.messageType === "image"
-                      ? "Image"
-                      : msg.messageType === "file"
-                      ? "File"
-                      : msg.messageType === "voice"
-                      ? "Voice Message"
-                      : msg.content}
+                        ? "Image"
+                        : msg.messageType === "file"
+                          ? "File"
+                          : msg.messageType === "voice"
+                            ? "Voice Message"
+                            : msg.content}
                   </p>
                 </div>
               ))}
             </div>
           ) : (
-            <p className={`text-[13px] ${isDark ? "text-[#9ca3af]" : "text-[#7b8197]"}`}>
+            <p
+              className={`text-[13px] ${isDark ? "text-[#9ca3af]" : "text-[#7b8197]"}`}
+            >
               No starred messages
             </p>
           )}

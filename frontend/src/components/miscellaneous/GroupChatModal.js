@@ -69,7 +69,7 @@ const GroupChatModal = ({ children }) => {
           name: groupChatName,
           users: JSON.stringify(selectedUsers.map((u) => u._id)),
         },
-        config
+        config,
       );
       setChats([data, ...chats]);
       onClose();
@@ -88,7 +88,9 @@ const GroupChatModal = ({ children }) => {
           <div className="bg-white rounded-lg w-[90%] md:w-[500px] p-4">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold">Create Group Chat</h2>
-              <button onClick={onClose} className="text-gray-500">✕</button>
+              <button onClick={onClose} className="text-gray-500">
+                ✕
+              </button>
             </div>
 
             <div className="flex flex-col gap-2">

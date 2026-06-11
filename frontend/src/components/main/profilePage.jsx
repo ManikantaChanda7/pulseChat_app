@@ -107,7 +107,8 @@ const ProfilePage = () => {
                   <span className="font-semibold">Account Status</span>
                 </div>
                 <p className="text-[16px]">
-                  Active account - your profile is available for chats and groups.
+                  Active account - your profile is available for chats and
+                  groups.
                 </p>
               </div>
             </div>

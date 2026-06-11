@@ -9,7 +9,6 @@ import {
   Plus,
   Pin,
   X,
-  Users,
 } from "lucide-react";
 
 import ChatLoading from "../ChatLoading";
@@ -147,29 +146,29 @@ export default function ChatList({ fetchAgain, chatTab }) {
     return decryptMessage(message.content || "");
   };
 
-  const fetchChats = async () => {
-    try {
-      const config = {
-        headers: {
-          Authorization: `Bearer ${user.token}`,
-        },
-      };
-
-      const { data } = await API.get("/api/chat", config);
-
-      setChats(data);
-    } catch (error) {
-      console.error("Failed to load chats");
-    }
-  };
-
   useEffect(() => {
     setLoggedUser(JSON.parse(localStorage.getItem("userInfo")));
+
+    const fetchChats = async () => {
+      try {
+        const config = {
+          headers: {
+            Authorization: `Bearer ${user.token}`,
+          },
+        };
+
+        const { data } = await API.get("/api/chat", config);
+
+        setChats(data);
+      } catch (error) {
+        console.error("Failed to load chats");
+      }
+    };
 
     if (user) {
       fetchChats();
     }
-  }, [fetchAgain, user]);
+  }, [fetchAgain, setChats, user]);
 
   useEffect(() => {
     if (!socket) return;

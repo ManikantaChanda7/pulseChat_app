@@ -3,8 +3,8 @@ import { useState } from "react";
 import { useHistory } from "react-router";
 
 // Cloudinary Configuration
-const CLOUDINARY_CLOUD_NAME = process.env.REACT_APP_CLOUDINARY_CLOUD_NAME || "dgrpyrxrn";
-const CLOUDINARY_UPLOAD_PRESET = process.env.REACT_APP_CLOUDINARY_UPLOAD_PRESET || "chat-app";
+const CLOUDINARY_CLOUD_NAME = process.env.REACT_APP_CLOUDINARY_CLOUD_NAME;
+const CLOUDINARY_UPLOAD_PRESET = process.env.REACT_APP_CLOUDINARY_UPLOAD_PRESET;
 
 const Signup = () => {
   const [show, setShow] = useState(false);
@@ -21,7 +21,13 @@ const Signup = () => {
   const submitHandler = async () => {
     setPicLoading(true);
     console.log("[Signup] Clicked submit");
-    console.log("[Signup] Values:", { name, email, password, confirmpassword, pic });
+    console.log("[Signup] Values:", {
+      name,
+      email,
+      password,
+      confirmpassword,
+      pic,
+    });
     if (!name || !email || !password || !confirmpassword) {
       console.warn("Please Fill all the Feilds");
       setPicLoading(false);
@@ -35,10 +41,10 @@ const Signup = () => {
     try {
       console.log("[Signup] Sending request to backend...");
       const { data } = await API.post("/api/user", {
-          name,
-          email,
-          password,
-          pic,
+        name,
+        email,
+        password,
+        pic,
       });
       console.log("[Signup] Response received:", data);
       console.log("Registration Successful");
@@ -47,7 +53,10 @@ const Signup = () => {
       history.push("/chats");
     } catch (error) {
       console.log("[Signup] Error:", error);
-      console.error("Error Occured!", error.response?.data?.message || error.message);
+      console.error(
+        "Error Occured!",
+        error.response?.data?.message || error.message,
+      );
       setPicLoading(false);
     }
   };
@@ -64,10 +73,13 @@ const Signup = () => {
       data.append("file", pics);
       data.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
       data.append("cloud_name", CLOUDINARY_CLOUD_NAME);
-      fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
-        method: "post",
-        body: data,
-      })
+      fetch(
+        `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+        {
+          method: "post",
+          body: data,
+        },
+      )
         .then((res) => res.json())
         .then((data) => {
           setPic(data.url.toString());
@@ -82,7 +94,6 @@ const Signup = () => {
       console.warn("Please Select an Image!");
       setPicLoading(false);
       return;
-          
     }
   };
 
@@ -93,7 +104,9 @@ const Signup = () => {
           ✨
         </div>
         <h2 className="text-2xl font-bold text-slate-900">Create Account</h2>
-        <p className="mt-1 text-sm text-slate-500">Join the conversation in seconds</p>
+        <p className="mt-1 text-sm text-slate-500">
+          Join the conversation in seconds
+        </p>
       </div>
       <div className="grid md:grid-cols-2 gap-3">
         <div>
@@ -105,7 +118,9 @@ const Signup = () => {
             placeholder="Enter your full name"
             onChange={(e) => setName(e.target.value)}
           />
-        </div></div><div>
+        </div>
+      </div>
+      <div>
         <div>
           <label className="block mb-2 text-sm font-semibold text-slate-700">
             Email Address
@@ -138,7 +153,9 @@ const Signup = () => {
               {show ? "Hide" : "Show"}
             </button>
           </div>
-        </div></div><div>
+        </div>
+      </div>
+      <div>
         <div>
           <label className="block mb-2 text-sm font-semibold text-slate-700">
             Confirm Password

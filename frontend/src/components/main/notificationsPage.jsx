@@ -3,8 +3,8 @@ import { useHistory } from "react-router-dom";
 import LeftSidebar from "./sideBar";
 import { ChatState } from "../../Context/ChatProvider";
 import { Bell, Trash2 } from "lucide-react";
-import axios from "axios";
 import { decryptMessage } from "../../utils/encryption";
+import API from "../../config/api";
 
 const formatTime = (dateString) => {
   if (!dateString) return "Now";
@@ -81,11 +81,7 @@ export default function NotificationsPage() {
         },
       };
 
-      await axios.patch(
-        `http://localhost:5001/api/notification/${item._id}/read`,
-        {},
-        config,
-      );
+      await API.patch(`api/notification/${item._id}/read`, {}, config);
     } catch (error) {
       console.error("Failed to mark notification read", error);
     }
@@ -155,10 +151,7 @@ export default function NotificationsPage() {
                       },
                     };
 
-                    await axios.delete(
-                      "http://localhost:5001/api/notification",
-                      config,
-                    );
+                    await API.delete("api/notification", config);
                     setNotification([]);
                   } catch (error) {
                     console.error("Failed to clear notifications", error);

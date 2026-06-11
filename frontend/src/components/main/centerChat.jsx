@@ -997,317 +997,319 @@ export default function CenterChat({
         </div>
       )}
       {selectedChat && (
-      <div
-        className={`h-[56px] rounded-[20px] mt-5 flex items-center px-4 gap-3 ${
-          isDark
-            ? "bg-white/[0.04] backdrop-blur-xl border border-white/8"
-            : "bg-white"
-        }`}
-        style={{
-          boxShadow:
-            "0 20px 35px rgba(79,85,150,0.08), inset 0 1px 0 rgba(255,255,255,0.7)",
-        }}
-      >
-        <div className="relative shrink-0">
-          {showAttachmentMenu && (
-            <div
-              className={`absolute bottom-14 left-0 rounded-[20px] p-3 flex flex-col gap-2 min-w-[170px] z-50 ${
-                isDark
-                  ? "bg-black/40 backdrop-blur-2xl border border-white/10"
-                  : "bg-white"
-              }`}
-              style={{
-                boxShadow: "0 20px 45px rgba(40,50,90,0.14)",
-              }}
-            >
-              {[
-                {
-                  label: "Image",
-                  icon: <Image size={16} className="text-[#ff5da2]" />,
-                },
-                {
-                  label: "File",
-                  icon: <Paperclip size={16} className="text-[#2453c4]" />,
-                },
-                {
-                  label: "Voice Record",
-                  icon: <Mic size={16} className="text-[#32c36c]" />,
-                },
-                {
-                  label: "Schedule Message",
-                  icon: <Clock3 size={16} className="text-[#ff9f43]" />,
-                },
-                ...(selectedChat?.isGroupChat
-                  ? [
-                      {
-                        label: "Create Poll",
-                        icon: <Vote size={16} className="text-[#8b5cf6]" />,
-                      },
-                    ]
-                  : []),
-              ].map((item) => {
-                const commonClass = `flex items-center gap-3 px-3 py-2 rounded-[14px] transition-colors text-left w-full ${
-                  isDark ? "hover:bg-[#1e293b]" : "hover:bg-[#f4f6fc]"
-                }`;
-
-                if (item.label === "Image") {
-                  return (
-                    <label key={item.label} className={commonClass}>
-                      <div
-                        className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-                          isDark ? "bg-[#1e293b]" : "bg-[#f4f6fc]"
-                        }`}
-                      >
-                        {item.icon}
-                      </div>
-
-                      <span
-                        className={`text-[14px] font-medium ${
-                          isDark ? "text-white" : "text-[#2d3142]"
-                        }`}
-                      >
-                        {item.label}
-                      </span>
-
-                      <input
-                        hidden
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => {
-                          uploadImage(e.target.files[0]);
-                          e.target.value = "";
-                        }}
-                      />
-                    </label>
-                  );
-                }
-
-                if (item.label === "File") {
-                  return (
-                    <label key={item.label} className={commonClass}>
-                      <div
-                        className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-                          isDark ? "bg-[#1e293b]" : "bg-[#f4f6fc]"
-                        }`}
-                      >
-                        {item.icon}
-                      </div>
-
-                      <span
-                        className={`text-[14px] font-medium ${
-                          isDark ? "text-white" : "text-[#2d3142]"
-                        }`}
-                      >
-                        {item.label}
-                      </span>
-
-                      <input
-                        hidden
-                        type="file"
-                        onChange={(e) => {
-                          uploadFile(e.target.files[0]);
-                          e.target.value = "";
-                        }}
-                      />
-                    </label>
-                  );
-                }
-
-                return (
-                  <button
-                    key={item.label}
-                    onClick={() => {
-                      if (item.label === "Schedule Message") {
-                        setShowScheduleBox(true);
-                      } else if (item.label === "Voice Record") {
-                        if (isRecording) {
-                          stopRecording();
-                        } else {
-                          startRecording();
-                        }
-                      } else if (item.label === "Create Poll") {
-                        setPollModalOpen(true);
-                      }
-
-                      setShowAttachmentMenu(false);
-                    }}
-                    className={commonClass}
-                  >
-                    <div
-                      className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-                        isDark ? "bg-[#1e293b]" : "bg-[#f4f6fc]"
-                      }`}
-                    >
-                      {item.icon}
-                    </div>
-
-                    <span
-                      className={`text-[14px] font-medium ${
-                        isDark ? "text-white" : "text-[#2d3142]"
-                      }`}
-                    >
-                      {item.label}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          <button
-            onClick={() => setShowAttachmentMenu((prev) => !prev)}
-            className={`w-10 h-10 rounded-[14px] flex items-center justify-center shrink-0 ${
-              isDark ? "bg-white/[0.05]" : "bg-[#f0f1fb]"
-            }`}
-          >
-            <Plus
-              className={isDark ? "text-[#cbd5e1]" : "text-[#68708d]"}
-              size={18}
-            />
-          </button>
-        </div>
-
-        {isRecording && (
-          <div
-            className={`mb-3 flex items-center justify-between rounded-[20px] px-4 py-3 ${
-              isDark
-                ? "bg-black/30 backdrop-blur-xl border border-white/8"
-                : "bg-white"
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <span className="animate-pulse text-red-500">🔴</span>
-              <span
-                className={`text-[14px] ${
-                  isDark ? "text-white" : "text-[#2d3142]"
-                }`}
-              >
-                Recording...
-              </span>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <button
-                onClick={cancelRecording}
-                className={`px-3 py-2 rounded-[12px] ${
-                  isDark ? "bg-[#1e293b] text-white" : "bg-[#eef2ff]"
-                }`}
-              >
-                Cancel
-              </button>
-
-              <button
-                onClick={stopRecording}
-                className="px-3 py-2 rounded-[12px] bg-[#2453c4] text-white"
-              >
-                Send
-              </button>
-            </div>
-          </div>
-        )}
-
-        <input
-          value={newMessage}
-          onChange={handleMessageInput}
-          onKeyDown={(e) => {
-            if (showScheduleBox && scheduledDate && scheduledTime) {
-              if (e.key === "Enter") {
-                e.preventDefault();
-
-                sendScheduledMessage();
-              }
-            } else {
-              sendMessage(e);
-            }
-          }}
-          placeholder={
-            editingMessage ? "Edit your message..." : "Type a message here..."
-          }
-          className={`flex-1 bg-transparent outline-none text-[15px] ${
-            isDark ? "text-white placeholder:text-[#9ca3af]" : "text-[#7b8197]"
+        <div
+          className={`h-[56px] rounded-[20px] mt-5 flex items-center px-4 gap-3 ${
+            isDark
+              ? "bg-white/[0.04] backdrop-blur-xl border border-white/8"
+              : "bg-white"
           }`}
-        />
+          style={{
+            boxShadow:
+              "0 20px 35px rgba(79,85,150,0.08), inset 0 1px 0 rgba(255,255,255,0.7)",
+          }}
+        >
+          <div className="relative shrink-0">
+            {showAttachmentMenu && (
+              <div
+                className={`absolute bottom-14 left-0 rounded-[20px] p-3 flex flex-col gap-2 min-w-[170px] z-50 ${
+                  isDark
+                    ? "bg-black/40 backdrop-blur-2xl border border-white/10"
+                    : "bg-white"
+                }`}
+                style={{
+                  boxShadow: "0 20px 45px rgba(40,50,90,0.14)",
+                }}
+              >
+                {[
+                  {
+                    label: "Image",
+                    icon: <Image size={16} className="text-[#ff5da2]" />,
+                  },
+                  {
+                    label: "File",
+                    icon: <Paperclip size={16} className="text-[#2453c4]" />,
+                  },
+                  {
+                    label: "Voice Record",
+                    icon: <Mic size={16} className="text-[#32c36c]" />,
+                  },
+                  {
+                    label: "Schedule Message",
+                    icon: <Clock3 size={16} className="text-[#ff9f43]" />,
+                  },
+                  ...(selectedChat?.isGroupChat
+                    ? [
+                        {
+                          label: "Create Poll",
+                          icon: <Vote size={16} className="text-[#8b5cf6]" />,
+                        },
+                      ]
+                    : []),
+                ].map((item) => {
+                  const commonClass = `flex items-center gap-3 px-3 py-2 rounded-[14px] transition-colors text-left w-full ${
+                    isDark ? "hover:bg-[#1e293b]" : "hover:bg-[#f4f6fc]"
+                  }`;
 
-        <div className="relative shrink-0">
-          <button
-            onClick={() => setShowEmojiPicker((prev) => !prev)}
-            className={`w-10 h-10 rounded-[14px] flex items-center justify-center ${
-              isDark ? "hover:bg-[#0f172a]" : "hover:bg-[#f4f6fc]"
-            }`}
-          >
-            <Smile
-              className={isDark ? "text-[#68708d]" : "text-[#68708d]"}
-              size={18}
-            />
-          </button>
+                  if (item.label === "Image") {
+                    return (
+                      <label key={item.label} className={commonClass}>
+                        <div
+                          className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                            isDark ? "bg-[#1e293b]" : "bg-[#f4f6fc]"
+                          }`}
+                        >
+                          {item.icon}
+                        </div>
 
-          {showEmojiPicker && (
+                        <span
+                          className={`text-[14px] font-medium ${
+                            isDark ? "text-white" : "text-[#2d3142]"
+                          }`}
+                        >
+                          {item.label}
+                        </span>
+
+                        <input
+                          hidden
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            uploadImage(e.target.files[0]);
+                            e.target.value = "";
+                          }}
+                        />
+                      </label>
+                    );
+                  }
+
+                  if (item.label === "File") {
+                    return (
+                      <label key={item.label} className={commonClass}>
+                        <div
+                          className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                            isDark ? "bg-[#1e293b]" : "bg-[#f4f6fc]"
+                          }`}
+                        >
+                          {item.icon}
+                        </div>
+
+                        <span
+                          className={`text-[14px] font-medium ${
+                            isDark ? "text-white" : "text-[#2d3142]"
+                          }`}
+                        >
+                          {item.label}
+                        </span>
+
+                        <input
+                          hidden
+                          type="file"
+                          onChange={(e) => {
+                            uploadFile(e.target.files[0]);
+                            e.target.value = "";
+                          }}
+                        />
+                      </label>
+                    );
+                  }
+
+                  return (
+                    <button
+                      key={item.label}
+                      onClick={() => {
+                        if (item.label === "Schedule Message") {
+                          setShowScheduleBox(true);
+                        } else if (item.label === "Voice Record") {
+                          if (isRecording) {
+                            stopRecording();
+                          } else {
+                            startRecording();
+                          }
+                        } else if (item.label === "Create Poll") {
+                          setPollModalOpen(true);
+                        }
+
+                        setShowAttachmentMenu(false);
+                      }}
+                      className={commonClass}
+                    >
+                      <div
+                        className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                          isDark ? "bg-[#1e293b]" : "bg-[#f4f6fc]"
+                        }`}
+                      >
+                        {item.icon}
+                      </div>
+
+                      <span
+                        className={`text-[14px] font-medium ${
+                          isDark ? "text-white" : "text-[#2d3142]"
+                        }`}
+                      >
+                        {item.label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            <button
+              onClick={() => setShowAttachmentMenu((prev) => !prev)}
+              className={`w-10 h-10 rounded-[14px] flex items-center justify-center shrink-0 ${
+                isDark ? "bg-white/[0.05]" : "bg-[#f0f1fb]"
+              }`}
+            >
+              <Plus
+                className={isDark ? "text-[#cbd5e1]" : "text-[#68708d]"}
+                size={18}
+              />
+            </button>
+          </div>
+
+          {isRecording && (
             <div
-              className={`absolute bottom-14 right-[-20px] rounded-[20px] p-3 z-50 w-[220px] ${
+              className={`mb-3 flex items-center justify-between rounded-[20px] px-4 py-3 ${
                 isDark
-                  ? "bg-black/40 backdrop-blur-2xl border border-white/10"
+                  ? "bg-black/30 backdrop-blur-xl border border-white/8"
                   : "bg-white"
               }`}
-              style={{
-                boxShadow: "0 20px 45px rgba(40,50,90,0.14)",
-              }}
             >
-              <div className="grid grid-cols-4 gap-2">
-                {[
-                  "😀",
-                  "😂",
-                  "😍",
-                  "😎",
-                  "😭",
-                  "😡",
-                  "👍",
-                  "🙏",
-                  "🔥",
-                  "❤️",
-                  "🎉",
-                  "🤝",
-                  "😮",
-                  "🤔",
-                  "🙌",
-                ].map((emoji) => (
-                  <button
-                    key={emoji}
-                    onClick={() => {
-                      typingHandler({
-                        target: {
-                          value: newMessage + emoji,
-                        },
-                      });
+              <div className="flex items-center gap-3">
+                <span className="animate-pulse text-red-500">🔴</span>
+                <span
+                  className={`text-[14px] ${
+                    isDark ? "text-white" : "text-[#2d3142]"
+                  }`}
+                >
+                  Recording...
+                </span>
+              </div>
 
-                      setShowEmojiPicker(false);
-                    }}
-                    className={`w-10 h-10 rounded-full flex items-center justify-center text-[22px] transition-colors ${
-                      isDark ? "hover:bg-[#1e293b]" : "hover:bg-[#f4f6fc]"
-                    }`}
-                  >
-                    {emoji}
-                  </button>
-                ))}
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={cancelRecording}
+                  className={`px-3 py-2 rounded-[12px] ${
+                    isDark ? "bg-[#1e293b] text-white" : "bg-[#eef2ff]"
+                  }`}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  onClick={stopRecording}
+                  className="px-3 py-2 rounded-[12px] bg-[#2453c4] text-white"
+                >
+                  Send
+                </button>
               </div>
             </div>
           )}
-        </div>
 
-        <button
-          onClick={() => {
-            if (showScheduleBox && scheduledDate && scheduledTime) {
-              sendScheduledMessage();
-            } else {
-              sendMessage({ key: "Enter" });
+          <input
+            value={newMessage}
+            onChange={handleMessageInput}
+            onKeyDown={(e) => {
+              if (showScheduleBox && scheduledDate && scheduledTime) {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+
+                  sendScheduledMessage();
+                }
+              } else {
+                sendMessage(e);
+              }
+            }}
+            placeholder={
+              editingMessage ? "Edit your message..." : "Type a message here..."
             }
-          }}
-          className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
-            isDark ? "bg-white/[0.05]" : "bg-[#f0f1fb]"
-          }`}
-        >
-          <Send className="text-[#2453c4]" size={16} />
-        </button>
-      </div>
+            className={`flex-1 bg-transparent outline-none text-[15px] ${
+              isDark
+                ? "text-white placeholder:text-[#9ca3af]"
+                : "text-[#7b8197]"
+            }`}
+          />
+
+          <div className="relative shrink-0">
+            <button
+              onClick={() => setShowEmojiPicker((prev) => !prev)}
+              className={`w-10 h-10 rounded-[14px] flex items-center justify-center ${
+                isDark ? "hover:bg-[#0f172a]" : "hover:bg-[#f4f6fc]"
+              }`}
+            >
+              <Smile
+                className={isDark ? "text-[#68708d]" : "text-[#68708d]"}
+                size={18}
+              />
+            </button>
+
+            {showEmojiPicker && (
+              <div
+                className={`absolute bottom-14 right-[-20px] rounded-[20px] p-3 z-50 w-[220px] ${
+                  isDark
+                    ? "bg-black/40 backdrop-blur-2xl border border-white/10"
+                    : "bg-white"
+                }`}
+                style={{
+                  boxShadow: "0 20px 45px rgba(40,50,90,0.14)",
+                }}
+              >
+                <div className="grid grid-cols-4 gap-2">
+                  {[
+                    "😀",
+                    "😂",
+                    "😍",
+                    "😎",
+                    "😭",
+                    "😡",
+                    "👍",
+                    "🙏",
+                    "🔥",
+                    "❤️",
+                    "🎉",
+                    "🤝",
+                    "😮",
+                    "🤔",
+                    "🙌",
+                  ].map((emoji) => (
+                    <button
+                      key={emoji}
+                      onClick={() => {
+                        typingHandler({
+                          target: {
+                            value: newMessage + emoji,
+                          },
+                        });
+
+                        setShowEmojiPicker(false);
+                      }}
+                      className={`w-10 h-10 rounded-full flex items-center justify-center text-[22px] transition-colors ${
+                        isDark ? "hover:bg-[#1e293b]" : "hover:bg-[#f4f6fc]"
+                      }`}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <button
+            onClick={() => {
+              if (showScheduleBox && scheduledDate && scheduledTime) {
+                sendScheduledMessage();
+              } else {
+                sendMessage({ key: "Enter" });
+              }
+            }}
+            className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+              isDark ? "bg-white/[0.05]" : "bg-[#f0f1fb]"
+            }`}
+          >
+            <Send className="text-[#2453c4]" size={16} />
+          </button>
+        </div>
       )}
     </div>
   );

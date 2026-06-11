@@ -1,4 +1,3 @@
-
 import API from "../../config/api";
 import { useState } from "react";
 import { ChatState } from "../../Context/ChatProvider";
@@ -56,7 +55,7 @@ const UpdateGroupChatModal = ({ fetchMessages, fetchAgain, setFetchAgain }) => {
           chatId: selectedChat._id,
           chatName: groupChatName,
         },
-        config
+        config,
       );
 
       console.log(data._id);
@@ -95,7 +94,7 @@ const UpdateGroupChatModal = ({ fetchMessages, fetchAgain, setFetchAgain }) => {
           chatId: selectedChat._id,
           userId: user1._id,
         },
-        config
+        config,
       );
 
       setSelectedChat(data);
@@ -127,7 +126,7 @@ const UpdateGroupChatModal = ({ fetchMessages, fetchAgain, setFetchAgain }) => {
           chatId: selectedChat._id,
           userId: user1._id,
         },
-        config
+        config,
       );
 
       user1._id === user._id ? setSelectedChat() : setSelectedChat(data);
@@ -143,14 +142,23 @@ const UpdateGroupChatModal = ({ fetchMessages, fetchAgain, setFetchAgain }) => {
 
   return (
     <>
-      <button onClick={onOpen} className="px-2 py-1 rounded bg-gray-200 hover:bg-gray-300">👁</button>
+      <button
+        onClick={onOpen}
+        className="px-2 py-1 rounded bg-gray-200 hover:bg-gray-300"
+      >
+        👁
+      </button>
 
       {isOpen && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
           <div className="bg-white rounded-lg w-[90%] md:w-[520px] p-4">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-semibold w-full text-center">{selectedChat.chatName}</h2>
-              <button onClick={onClose} className="text-gray-500">✕</button>
+              <h2 className="text-2xl font-semibold w-full text-center">
+                {selectedChat.chatName}
+              </h2>
+              <button onClick={onClose} className="text-gray-500">
+                ✕
+              </button>
             </div>
 
             <div className="flex flex-col items-center">

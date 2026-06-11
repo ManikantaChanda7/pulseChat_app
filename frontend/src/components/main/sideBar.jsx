@@ -10,8 +10,8 @@ export default function LeftSidebar({ chatTab, setChatTab }) {
   const { notification, user } = ChatState();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const unreadCount = Array.isArray(notification)
-  ? notification.filter((n) => !n.isRead).length
-  : 0;
+    ? notification.filter((n) => !n.isRead).length
+    : 0;
 
   const handleLogout = async () => {
     try {
@@ -28,9 +28,7 @@ export default function LeftSidebar({ chatTab, setChatTab }) {
   return (
     <div
       className={`w-[94px] rounded-[34px] flex flex-col items-center py-10 relative transition-colors ${
-        isDark
-          ? "bg-[#191d30]"
-          : "bg-[#2453c4]"
+        isDark ? "bg-[#191d30]" : "bg-[#2453c4]"
       }`}
     >
       {/* LOGO */}

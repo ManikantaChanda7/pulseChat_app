@@ -3,39 +3,36 @@ import API from "../../config/api";
 import { ChatState } from "../../Context/ChatProvider";
 import { decryptMessageObject } from "../../utils/encryption";
 import LeftSidebar from "./sideBar";
-import { useHistory } from "react-router-dom";
 
 export default function GlobalMedia() {
   const { user } = ChatState();
-  const history = useHistory();
   const isDark = localStorage.getItem("darkMode") === "true";
 
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
 
-  const fetchSharedMedia = async () => {
-    try {
-      setLoading(true);
-
-      const config = {
-        headers: {
-          Authorization: `Bearer ${user.token}`,
-        },
-      };
-
-      const { data } = await API.get("/api/message/shared-files", config);
-
-      setItems((data || []).map((msg) => decryptMessageObject(msg)));
-    } catch (error) {
-      console.error(error);
-      setItems([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
+    const fetchSharedMedia = async () => {
+      try {
+        setLoading(true);
+
+        const config = {
+          headers: {
+            Authorization: `Bearer ${user.token}`,
+          },
+        };
+
+        const { data } = await API.get("/api/message/shared-files", config);
+
+        setItems((data || []).map((msg) => decryptMessageObject(msg)));
+      } catch (error) {
+        console.error(error);
+        setItems([]);
+      } finally {
+        setLoading(false);
+      }
+    };
     if (user?.token) {
       fetchSharedMedia();
     }

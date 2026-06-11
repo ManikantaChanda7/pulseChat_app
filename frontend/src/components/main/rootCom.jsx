@@ -44,19 +44,15 @@ const scrollbarStyles = `
 }
 `;
 
-const CLOUDINARY_CLOUD_NAME =
-  process.env.REACT_APP_CLOUDINARY_CLOUD_NAME || "dgrpyrxrn";
+const CLOUDINARY_CLOUD_NAME = process.env.REACT_APP_CLOUDINARY_CLOUD_NAME;
 
-const CLOUDINARY_UPLOAD_PRESET =
-  process.env.REACT_APP_CLOUDINARY_UPLOAD_PRESET || "chat-app";
+const CLOUDINARY_UPLOAD_PRESET = process.env.REACT_APP_CLOUDINARY_UPLOAD_PRESET;
 
 export default function RootCom() {
   /* ---------------- STATES ---------------- */
   const location = useLocation();
 
   const [hoveredMessage, setHoveredMessage] = useState(null);
-
-  const [hoveredChat, setHoveredChat] = useState(null);
 
   const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
 
@@ -67,10 +63,6 @@ export default function RootCom() {
   const [showMessageSearch, setShowMessageSearch] = useState(false);
 
   const [messageSearch, setMessageSearch] = useState("");
-
-  const [chatMenuOpen, setChatMenuOpen] = useState(null);
-
-  const [showChatListMenu, setShowChatListMenu] = useState(false);
 
   const [showRightPanel, setShowRightPanel] = useState(false);
 
@@ -119,7 +111,6 @@ export default function RootCom() {
   const [pollOptions, setPollOptions] = useState(["", ""]);
   const [allowMultiplePollVotes, setAllowMultiplePollVotes] = useState(false);
 
-  const recordingIntervalRef = useRef(null);
   const [typing, setTyping] = useState(false);
   const [typingUser, setTypingUser] = useState(null);
   const [fetchAgain, setFetchAgain] = useState(false);
@@ -169,41 +160,6 @@ export default function RootCom() {
 
   const isDark = localStorage.getItem("darkMode") === "true";
 
-  const fetchMessages = async () => {
-    if (!selectedChat) return;
-
-    try {
-      const config = {
-        headers: {
-          Authorization: `Bearer ${user.token}`,
-        },
-      };
-
-      const { data } = await API.get(
-        `/api/message/${selectedChat._id}?page=${page}&limit=20`,
-        config,
-      );
-
-      const fetchedMessages = data.messages || data || [];
-
-      const decryptedMessages = fetchedMessages.map((msg) =>
-        decryptMessageObject(msg),
-      );
-
-      if (page === 1) {
-        setMessages(decryptedMessages);
-      } else {
-        setMessages((prev) => [...decryptedMessages, ...prev]);
-      }
-
-      setHasMore(data.hasMore);
-
-      console.log("FETCHED MESSAGES:", data.messages || data || []);
-    } catch (error) {
-      console.error("Failed to load messages", error);
-    }
-  };
-
   useEffect(() => {
     setChatTab(location.pathname === "/groups" ? "groups" : "direct");
 
@@ -218,10 +174,45 @@ export default function RootCom() {
 
     selectedChatCompare.current = selectedChat;
 
+    const fetchMessages = async () => {
+      if (!selectedChat) return;
+
+      try {
+        const config = {
+          headers: {
+            Authorization: `Bearer ${user.token}`,
+          },
+        };
+
+        const { data } = await API.get(
+          `/api/message/${selectedChat._id}?page=${page}&limit=20`,
+          config,
+        );
+
+        const fetchedMessages = data.messages || data || [];
+
+        const decryptedMessages = fetchedMessages.map((msg) =>
+          decryptMessageObject(msg),
+        );
+
+        if (page === 1) {
+          setMessages(decryptedMessages);
+        } else {
+          setMessages((prev) => [...decryptedMessages, ...prev]);
+        }
+
+        setHasMore(data.hasMore);
+
+        console.log("FETCHED MESSAGES:", data.messages || data || []);
+      } catch (error) {
+        console.error("Failed to load messages", error);
+      }
+    };
+
     fetchMessages();
 
     socket?.emit("join chat", selectedChat._id);
-  }, [selectedChat, socket]);
+  }, [selectedChat, socket, page, user.token]);
 
   useEffect(() => {
     setPage(1);
@@ -261,7 +252,7 @@ export default function RootCom() {
     return () => {
       socket?.off("message recieved", handleMessageReceived);
     };
-  }, [socket, notification]);
+  }, [socket, notification, setNotification]);
 
   useEffect(() => {
     if (!socket) return;
@@ -410,7 +401,7 @@ export default function RootCom() {
     return () => {
       socket.off("messages seen", handleMessagesSeen);
     };
-  }, [socket, setChats, messageInfoModal]);
+  }, [socket, setChats, messageInfoModal, user._id]);
 
   useEffect(() => {
     if (!socket) return;
@@ -1375,8 +1366,6 @@ export default function RootCom() {
           setContextMenu(null);
           setShowPinOptions(false);
           setShowChatMenu(false);
-          setChatMenuOpen(null);
-          setShowChatListMenu(false);
           setReactionPopup(false);
         }}
       >
