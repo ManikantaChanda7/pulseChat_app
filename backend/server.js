@@ -272,11 +272,16 @@ io.on("connection", (socket) => {
     socket.userId = userData._id.toString();
     socket.join(userData._id.toString());
 
-    await addUserSocket(userData._id.toString(), socket.id);
+    try {
+      await addUserSocket(userData._id.toString(), socket.id);
+      console.log("ADD USER SOCKET SUCCESS");
 
-    const redis = require("./config/redis");
-    const keys = await redis.keys("presence:*");
-    console.log("PRESENCE KEYS:", keys);
+      const redis = require("./config/redis");
+      const keys = await redis.keys("presence:*");
+      console.log("PRESENCE KEYS:", keys);
+    } catch (err) {
+      console.error("PRESENCE DEBUG ERROR:", err);
+    }
 
     User.findByIdAndUpdate(userData._id, {
       lastSeen: new Date(),
