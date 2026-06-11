@@ -1,9 +1,11 @@
 const redis = require("../config/redis");
 
 const presenceKey = (userId) => `presence:${userId}`;
+const ONLINE_USERS_KEY = "online_users";
 
 const addUserSocket = async (userId, socketId) => {
   await redis.sadd(presenceKey(userId), socketId);
+  await redis.sadd(ONLINE_USERS_KEY, userId);
 };
 
 const removeUserSocket = async (userId, socketId) => {
@@ -12,6 +14,7 @@ const removeUserSocket = async (userId, socketId) => {
 
   if (remaining === 0) {
     await redis.del(presenceKey(userId));
+    await redis.srem(ONLINE_USERS_KEY, userId);
     return false;
   }
 
@@ -28,8 +31,7 @@ const isUserOnline = async (userId) => {
 };
 
 const getOnlineUsers = async () => {
-  const keys = await redis.keys("presence:*");
-  return keys.map((key) => key.replace("presence:", ""));
+  return await redis.smembers(ONLINE_USERS_KEY);
 };
 
 module.exports = {
