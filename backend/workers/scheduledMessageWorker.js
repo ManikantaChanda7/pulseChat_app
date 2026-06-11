@@ -1,5 +1,9 @@
 const { Worker } = require("bullmq");
-const redis = require("../config/redis");
+const workerConnection = {
+  url: process.env.REDIS_URL,
+  maxRetriesPerRequest: null,
+  enableReadyCheck: false,
+};
 const Message = require("../models/messageModel");
 const Notification = require("../models/notificationModel");
 
@@ -105,7 +109,7 @@ const startScheduledMessageWorker = (io) => {
       });
     },
     {
-      connection: redis,
+      connection: workerConnection,
     },
   );
 };

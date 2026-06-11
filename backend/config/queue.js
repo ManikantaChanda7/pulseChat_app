@@ -1,8 +1,13 @@
 const { Queue } = require("bullmq");
-const redis = require("./redis");
+
+const queueConnection = {
+  url: process.env.REDIS_URL,
+  maxRetriesPerRequest: null,
+  enableReadyCheck: false,
+};
 
 const scheduledMessageQueue = new Queue("scheduled-messages", {
-  connection: redis,
+  connection: queueConnection,
 });
 
 module.exports = {
