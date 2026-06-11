@@ -59,7 +59,7 @@ app.use(
   cors({
     origin: [
       process.env.CORS_ORIGIN || "http://localhost:3000",
-      "https://chat-pulse-app.vercel.app",
+      "https://pulse-chat-app-zeta.vercel.app",
     ],
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
@@ -114,7 +114,7 @@ const io = require("socket.io")(server, {
   cors: {
     origin: [
       process.env.CORS_ORIGIN || "http://localhost:3000",
-      "https://chat-pulse-app.vercel.app",
+      "https://pulse-chat-app-zeta.vercel.app",
     ],
   },
 });
