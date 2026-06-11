@@ -267,14 +267,16 @@ console.log("\n[✅ SOCKET.IO INITIALIZED AND SET ON APP]\n");
 io.on("connection", (socket) => {
   console.log("Connected to socket.io, socket id:", socket.id);
 
-  socket.on("setup", (userData) => {
+  socket.on("setup", async (userData) => {
     console.log("CONNECTED:", userData._id, socket.id);
     socket.userId = userData._id.toString();
     socket.join(userData._id.toString());
 
-    addUserSocket(userData._id.toString(), socket.id).catch((err) =>
-      console.error("PRESENCE ADD ERROR", err),
-    );
+    await addUserSocket(userData._id.toString(), socket.id);
+
+    const redis = require("./config/redis");
+    const keys = await redis.keys("presence:*");
+    console.log("PRESENCE KEYS:", keys);
 
     User.findByIdAndUpdate(userData._id, {
       lastSeen: new Date(),
