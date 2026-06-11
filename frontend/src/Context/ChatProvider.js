@@ -15,7 +15,7 @@ const ChatProvider = ({ children }) => {
   const [selectedChat, setSelectedChat] = useState();
   const [user, setUser] = useState();
   const [notification, setNotification] = useState([]);
-  const [chats, setChats] = useState();
+  const [chats, setChats] = useState([]);
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [lastSeenMap, setLastSeenMap] = useState({});
   const [socket, setSocket] = useState(null);

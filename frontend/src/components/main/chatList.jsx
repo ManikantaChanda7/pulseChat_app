@@ -29,6 +29,7 @@ export default function ChatList({ fetchAgain, chatTab }) {
   const [groupName, setGroupName] = useState("");
   const [selectedUsers, setSelectedUsers] = useState([]);
   const [showArchivedOnly, setShowArchivedOnly] = useState(false);
+  const [loadingChats, setLoadingChats] = useState(true);
   const searchUsers = async (query) => {
     setUserSearch(query);
 
@@ -156,19 +157,20 @@ export default function ChatList({ fetchAgain, chatTab }) {
             Authorization: `Bearer ${user.token}`,
           },
         };
-
+        setLoadingChats(true);
         const { data } = await API.get("/api/chat", config);
 
         setChats(data);
+        setLoadingChats(false);
       } catch (error) {
         console.error("Failed to load chats");
       }
     };
 
-    if (user) {
+    if (user?.token) {
       fetchChats();
     }
-  }, [fetchAgain, setChats, user]);
+  }, [fetchAgain, setChats, user?.token]);
 
   useEffect(() => {
     if (!socket) return;
@@ -530,7 +532,7 @@ export default function ChatList({ fetchAgain, chatTab }) {
       </div>
 
       {/* CHAT LIST */}
-      {chats ? (
+      {!loadingChats ? (
         <div className="mt-6 overflow-y-auto overflow-x-visible flex-1 min-h-0 custom-scrollbar mr-[-10px] pr-[12px] relative z-[1]">
           {filteredChats.map((chat, index) => {
             const isSelected = selectedChat === chat;
