@@ -180,7 +180,7 @@ export default function RootCom() {
       try {
         const config = {
           headers: {
-            Authorization: `Bearer ${user.token}`,
+            Authorization: `Bearer ${user?.token}`,
           },
         };
 
@@ -212,7 +212,7 @@ export default function RootCom() {
     fetchMessages();
 
     socket?.emit("join chat", selectedChat._id);
-  }, [selectedChat, socket, page, user.token]);
+  }, [selectedChat, socket, page, user?.token]);
 
   useEffect(() => {
     setPage(1);
@@ -386,7 +386,7 @@ export default function RootCom() {
               readOverrides: (chat.readOverrides || []).filter(
                 (entry) =>
                   (entry.user?._id || entry.user)?.toString() !==
-                  user._id?.toString(),
+                  user?._id?.toString(),
               ),
             };
           }
@@ -401,7 +401,7 @@ export default function RootCom() {
     return () => {
       socket.off("messages seen", handleMessagesSeen);
     };
-  }, [socket, setChats, messageInfoModal, user._id]);
+  }, [socket, setChats, messageInfoModal, user?._id]);
 
   useEffect(() => {
     if (!socket) return;
@@ -567,7 +567,7 @@ export default function RootCom() {
       setTyping(true);
       socket.emit("typing", {
         room: selectedChat._id,
-        userId: user._id,
+        userId: user?._id,
         userName: user.name,
       });
     }
@@ -594,7 +594,7 @@ export default function RootCom() {
 
     return selectedChat.users
       .filter((chatUser) => {
-        if (chatUser._id === user._id) return false;
+        if (chatUser._id === user?._id) return false;
 
         return mentionMatches.some(
           (mention) => mention.slice(1) === chatUser.name,
@@ -607,7 +607,7 @@ export default function RootCom() {
     try {
       const config = {
         headers: {
-          Authorization: `Bearer ${user.token}`,
+          Authorization: `Bearer ${user?.token}`,
         },
       };
 
@@ -645,7 +645,7 @@ export default function RootCom() {
       const config = {
         headers: {
           "Content-type": "application/json",
-          Authorization: `Bearer ${user.token}`,
+          Authorization: `Bearer ${user?.token}`,
         },
       };
 
@@ -687,7 +687,7 @@ export default function RootCom() {
       const config = {
         headers: {
           "Content-type": "application/json",
-          Authorization: `Bearer ${user.token}`,
+          Authorization: `Bearer ${user?.token}`,
         },
       };
 
@@ -720,7 +720,7 @@ export default function RootCom() {
       const config = {
         headers: {
           "Content-type": "application/json",
-          Authorization: `Bearer ${user.token}`,
+          Authorization: `Bearer ${user?.token}`,
         },
       };
 
@@ -750,7 +750,7 @@ export default function RootCom() {
       const config = {
         headers: {
           "Content-type": "application/json",
-          Authorization: `Bearer ${user.token}`,
+          Authorization: `Bearer ${user?.token}`,
         },
       };
 
@@ -815,7 +815,7 @@ export default function RootCom() {
       const config = {
         headers: {
           "Content-type": "application/json",
-          Authorization: `Bearer ${user.token}`,
+          Authorization: `Bearer ${user?.token}`,
         },
       };
 
@@ -883,7 +883,7 @@ export default function RootCom() {
     try {
       const config = {
         headers: {
-          Authorization: `Bearer ${user.token}`,
+          Authorization: `Bearer ${user?.token}`,
         },
       };
 
@@ -932,7 +932,7 @@ export default function RootCom() {
     try {
       const config = {
         headers: {
-          Authorization: `Bearer ${user.token}`,
+          Authorization: `Bearer ${user?.token}`,
         },
       };
 
@@ -961,7 +961,7 @@ export default function RootCom() {
     try {
       const config = {
         headers: {
-          Authorization: `Bearer ${user.token}`,
+          Authorization: `Bearer ${user?.token}`,
         },
       };
 
@@ -994,7 +994,7 @@ export default function RootCom() {
     try {
       const config = {
         headers: {
-          Authorization: `Bearer ${user.token}`,
+          Authorization: `Bearer ${user?.token}`,
         },
       };
 
@@ -1028,7 +1028,7 @@ export default function RootCom() {
 
       const config = {
         headers: {
-          Authorization: `Bearer ${user.token}`,
+          Authorization: `Bearer ${user?.token}`,
         },
       };
 
@@ -1082,7 +1082,7 @@ export default function RootCom() {
       const config = {
         headers: {
           "Content-type": "application/json",
-          Authorization: `Bearer ${user.token}`,
+          Authorization: `Bearer ${user?.token}`,
         },
       };
 
@@ -1143,7 +1143,7 @@ export default function RootCom() {
       const config = {
         headers: {
           "Content-type": "application/json",
-          Authorization: `Bearer ${user.token}`,
+          Authorization: `Bearer ${user?.token}`,
         },
       };
 
@@ -1228,7 +1228,7 @@ export default function RootCom() {
         const config = {
           headers: {
             "Content-type": "application/json",
-            Authorization: `Bearer ${user.token}`,
+            Authorization: `Bearer ${user?.token}`,
           },
         };
 
@@ -1292,7 +1292,7 @@ export default function RootCom() {
       const config = {
         headers: {
           "Content-type": "application/json",
-          Authorization: `Bearer ${user.token}`,
+          Authorization: `Bearer ${user?.token}`,
         },
       };
 
@@ -1624,7 +1624,7 @@ export default function RootCom() {
                   {messages
                     .find((m) => m._id === contextMenu.messageId)
                     ?.starredBy?.some(
-                      (starUser) => (starUser._id || starUser) === user._id,
+                      (starUser) => (starUser._id || starUser) === user?._id,
                     )
                     ? "Unstar Message"
                     : "Star Message"}
@@ -1826,7 +1826,7 @@ export default function RootCom() {
                   >
                     {chat.isGroupChat
                       ? chat.chatName
-                      : chat.users?.find((u) => u._id !== user._id)?.name ||
+                      : chat.users?.find((u) => u._id !== user?._id)?.name ||
                         "Direct Chat"}
                   </span>
 
@@ -1892,7 +1892,7 @@ export default function RootCom() {
 
                     return seenUser;
                   })
-                  .filter((seenUser) => seenUser && seenUser._id !== user._id)
+                  .filter((seenUser) => seenUser && seenUser._id !== user?._id)
                   .map((seenUser) => (
                     <div
                       key={seenUser._id}
