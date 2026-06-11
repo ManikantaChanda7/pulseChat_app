@@ -122,7 +122,25 @@ const io = require("socket.io")(server, {
 const pubClient = new Redis(process.env.REDIS_URL || "redis://127.0.0.1:6379", {
   maxRetriesPerRequest: null,
 });
+
 const subClient = pubClient.duplicate();
+
+pubClient.on("connect", () => {
+  console.log("[REDIS PUB] Connected");
+});
+
+pubClient.on("error", (err) => {
+  console.error("[REDIS PUB ERROR]", err.message);
+});
+
+subClient.on("connect", () => {
+  console.log("[REDIS SUB] Connected");
+});
+
+subClient.on("error", (err) => {
+  console.error("[REDIS SUB ERROR]", err.message);
+});
+
 io.adapter(createAdapter(pubClient, subClient));
 
 // Pass io object to Express app so routes can access it
