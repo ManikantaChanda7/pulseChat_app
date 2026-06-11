@@ -121,6 +121,11 @@ const io = require("socket.io")(server, {
 
 const pubClient = new Redis(process.env.REDIS_URL || "redis://127.0.0.1:6379", {
   maxRetriesPerRequest: null,
+  enableReadyCheck: false,
+  lazyConnect: true,
+  retryStrategy(times) {
+    return Math.min(times * 1000, 10000);
+  },
 });
 
 const subClient = pubClient.duplicate();

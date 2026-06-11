@@ -1,5 +1,3 @@
-
-
 const redis = require("../config/redis");
 
 const presenceKey = (userId) => `presence:${userId}`;
